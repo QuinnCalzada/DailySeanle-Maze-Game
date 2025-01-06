@@ -22,23 +22,23 @@ const LETTER_E   = 7;
 const LETTER_A   = 8;
 const LETTER_N   = 9;
 
-// We’ll keep color fallback for non-letter tiles
+// Fallback colors
 const TILE_COLORS = {
   [WALL]:       "#444",
-  [FLOOR]:      "#cccccc",
-  [CRACK_WALL]: "#666666",
+  [FLOOR]:      "#ccc",
+  [CRACK_WALL]: "#666",
   [TRAP_FLOOR]: "#880000",
   [KEY_ITEM]:   "gold",
   [TIME_ITEM]:  "cyan"
 };
 
-// For the player & enemy
+// Player & enemy
 const PLAYER_COLOR = "yellow";
 const ENEMY_COLOR  = "red";
 
 // Enemy moves every 0.1 seconds
 const ENEMY_MOVE_INTERVAL = 100; // ms
- 
+
 // Maze + Player + Enemy
 let canvas, ctx;
 let maze = [];
@@ -70,17 +70,16 @@ let seanSummonedTimer = 0;
 const SEAN_SUMMONED_DURATION = 500;
 
 // ------------------------------------------------------
-// DAILY LOGIC: dayIndex & seeded RNG
+// DAILY LOGIC
 // ------------------------------------------------------
 const REFERENCE_DATE = new Date(2025, 0, 5); // Jan 5, 2025
 const now = new Date();
 let dayIndex = Math.floor((now - REFERENCE_DATE) / (1000 * 60 * 60 * 24)) + 1;
+
+// Our puzzle seed = dayIndex
 let puzzleSeed = dayIndex;
-
-document.getElementById("dailySeanleHeading").textContent = `Daily Seanle #${dayIndex}`;
-
-// A simple seeded RNG
 let rngState = puzzleSeed;
+
 function seededRandom() {
   rngState = (1103515245 * rngState + 12345) & 0x7fffffff;
   return (rngState / 0x80000000);
@@ -92,7 +91,6 @@ function sRandRange(min, max) {
 // ------------------------------------------------------
 // LETTER IMAGES for S/E/A/N
 // ------------------------------------------------------
-// We'll load four images specifically for the letters.
 let letterImages = {
   [LETTER_S]: null,
   [LETTER_E]: null,
@@ -124,109 +122,110 @@ function loadLetterImages(onComplete) {
 }
 
 // ------------------------------------------------------
-// WINDOW ONLOAD
+// window.onload
 // ------------------------------------------------------
 window.onload = function() {
-  // 1) Load letter images first
+  // 1) Load images first
   loadLetterImages(() => {
-    // 2) Then initialize the game once images are ready
+    // 2) Then init game
     initGame();
     setupInput();
 
-    // Show rules popup first
-    showElement("rulesPopup");
+    // 3) Handle once-per-day logic
+    handlePlayOncePerDay();
 
-    // Enemy interval
+    // 4) Enemy movement
     setInterval(() => {
       if (gameRunning && enemy.active) {
         moveEnemyBFS();
       }
     }, ENEMY_MOVE_INTERVAL);
 
-    // Setup share button
+    // 5) Setup share button
     const shareBtn = document.getElementById("shareBtn");
     shareBtn.addEventListener("click", copyResultsToClipboard);
 
-    // Start button
+    // 6) Start button
     const startGameBtn = document.getElementById("startGameBtn");
     startGameBtn.addEventListener("click", startGame);
   });
 };
 
 // ------------------------------------------------------
-// PLAY ONCE PER DAY LOGIC
+// PLAY ONCE PER DAY
 // ------------------------------------------------------
-
-// Function to format date as YYYY-MM-DD
 function getFormattedDate() {
   const today = new Date();
-  const year = today.getFullYear();
-  const month = String(today.getMonth() + 1).padStart(2, '0');
-  const day = String(today.getDate()).padStart(2, '0');
-  return `${year}-${month}-${day}`;
+  const y = today.getFullYear();
+  const m = String(today.getMonth() + 1).padStart(2, '0');
+  const d = String(today.getDate()).padStart(2, '0');
+  return `${y}-${m}-${d}`;
 }
 
-// Function to check if user has played today
 function hasPlayedToday() {
   const lastPlayed = localStorage.getItem('lastPlayedDate');
-  const today = getFormattedDate();
-  return lastPlayed === today;
+  return lastPlayed === getFormattedDate();
 }
 
-// Function to set the play flag
-function setPlayedFlag() {
-  const today = getFormattedDate();
-  localStorage.setItem('lastPlayedDate', today);
+function setPlayedFlag(isWin, gameTime) {
+  localStorage.setItem('lastPlayedDate', getFormattedDate());
+  localStorage.setItem('gameResult', isWin ? 'win' : 'lose');
+  localStorage.setItem('gameTime', gameTime.toFixed(2));
 }
 
-// Function to handle play once per day
 function handlePlayOncePerDay() {
-  const alreadyPlayedDiv = document.getElementById('alreadyPlayedMessage');
-
-  // Create a message div to show if the user has already played
-  const messageDiv = document.createElement('div');
-  messageDiv.id = 'alreadyPlayedMessage';
-  messageDiv.style.display = 'none';
-  messageDiv.style.fontSize = '1.2em';
-  messageDiv.style.color = 'green';
-  messageDiv.style.textAlign = 'center';
-  messageDiv.style.marginTop = '20px';
-  messageDiv.textContent = 'You have already played today. Come back tomorrow!';
-  document.body.insertBefore(messageDiv, document.getElementById('gameContainer'));
+  // Set heading
+  const heading = document.getElementById("dailySeanleHeading");
+  if (heading) {
+    heading.textContent = `Daily Seanle #${dayIndex}`;
+  }
 
   if (hasPlayedToday()) {
-    // User has already played today
-    messageDiv.style.display = 'block';
-    // Hide the rules popup and game container
-    hideElement("rulesPopup");
-    hideElement("gameContainer");
+    // Already played => stop game, show endGamePopup
+    gameRunning = false;
+
+    // Retrieve result from localStorage
+    const gameResult = localStorage.getItem('gameResult');
+    const gameTime   = localStorage.getItem('gameTime');
+
+    const endGameDiv  = document.getElementById("endGamePopup");
+    const endGameText = document.getElementById("endGameText");
+    if (endGameDiv && endGameText) {
+      endGameDiv.style.display = "block";
+      if (gameResult === 'win') {
+        endGameText.textContent = `Congrats! You collected S, E, A, N in ${gameTime} seconds.`;
+      } else if (gameResult === 'lose') {
+        endGameText.textContent = "You got Seaned! Try again tomorrow.";
+      } else {
+        endGameText.textContent = "You have already played today. Come back tomorrow!";
+      }
+    }
   } else {
-    // Show the rules popup
+    // Not played yet => show rulesPopup
     showElement("rulesPopup");
   }
 
-  // Listen for game completion event
-  document.addEventListener('gameCompleted', () => {
-    // Set the play flag
-    setPlayedFlag();
-    // Hide the game and show the end game popup
-    hideElement("gameContainer");
-    showElement("endGamePopup");
-    document.getElementById('endGameText').textContent = 'Congratulations! You completed the game. Come back tomorrow.';
+  // Listen for gameCompleted event
+  document.addEventListener('gameCompleted', (e) => {
+    const isWin = e.detail.isWin;
+    const time  = e.detail.gameTime;
+
+    setPlayedFlag(isWin, time);
+    // Don't hide the maze => just set gameRunning=false so user can't move
+    gameRunning = false;
+
+    const endGameDiv  = document.getElementById("endGamePopup");
+    const endGameText = document.getElementById("endGameText");
+    if (endGameDiv && endGameText) {
+      endGameDiv.style.display = "block";
+      if (isWin) {
+        endGameText.textContent = `Congrats! You collected S, E, A, N in ${time.toFixed(2)} seconds.`;
+      } else {
+        endGameText.textContent = "You got Seaned! Try again tomorrow.";
+      }
+    }
   });
 }
-
-// Adjust existing game completion logic
-// For example, in your endGame() function, after showing popups, dispatch the 'gameCompleted' event
-function endGame() {
-  gameRunning = false;
-  showEndGamePopup(true);
-  
-  // Dispatch 'gameCompleted' event
-  const event = new Event('gameCompleted');
-  document.dispatchEvent(event);
-}
-
 
 // ------------------------------------------------------
 // INIT GAME
@@ -235,8 +234,7 @@ function initGame() {
   canvas = document.getElementById("gameCanvas");
   ctx = canvas.getContext("2d");
 
-  // Set puzzle seed
-  rngState = puzzleSeed;
+  rngState = puzzleSeed; // set seed
 
   generateMaze();
   placeFeatures();
@@ -247,8 +245,8 @@ function initGame() {
   timeElapsed = 0;
 
   enemy.active = false;
-  enemy.row = -1;
-  enemy.col = -1;
+  enemy.row    = -1;
+  enemy.col    = -1;
 
   hideElement("popup");
   hideElement("seanSummonedPopup");
@@ -276,7 +274,10 @@ function gameLoop(timestamp) {
   lastFrameTime = timestamp;
 
   timeElapsed += dt;
-  document.getElementById("timeLabel").textContent = timeElapsed.toFixed(2);
+  const timeLabel = document.getElementById("timeLabel");
+  if (timeLabel) {
+    timeLabel.textContent = timeElapsed.toFixed(2);
+  }
 
   if (trapPopupTimer > 0) {
     trapPopupTimer -= dt * 1000;
@@ -296,7 +297,7 @@ function gameLoop(timestamp) {
 }
 
 // ------------------------------------------------------
-// DRAW - uses letterImages for S/E/A/N tiles
+// DRAW
 // ------------------------------------------------------
 function draw() {
   ctx.clearRect(0, 0, canvas.width, canvas.height);
@@ -315,42 +316,43 @@ function draw() {
     }
   }
 
-  // Player
+  // Draw player
   ctx.fillStyle = PLAYER_COLOR;
-  ctx.fillRect(player.col*TILE_SIZE + 8, player.row*TILE_SIZE + 8,
-               TILE_SIZE - 16, TILE_SIZE - 16);
+  ctx.fillRect(
+    player.col*TILE_SIZE + 8,
+    player.row*TILE_SIZE + 8,
+    TILE_SIZE - 16,
+    TILE_SIZE - 16
+  );
 
-  // Enemy
+  // Draw enemy
   if (enemy.active) {
     ctx.fillStyle = ENEMY_COLOR;
-    ctx.fillRect(enemy.col*TILE_SIZE + 8, enemy.row*TILE_SIZE + 8,
-                 TILE_SIZE - 16, TILE_SIZE - 16);
+    ctx.fillRect(
+      enemy.col*TILE_SIZE + 8,
+      enemy.row*TILE_SIZE + 8,
+      TILE_SIZE - 16,
+      TILE_SIZE - 16
+    );
   }
 }
 
-// If tile is a letter, draw the image; otherwise, fallback to color
 function drawTile(r, c, tileType) {
-  if (tileType === LETTER_S ||
-      tileType === LETTER_E ||
-      tileType === LETTER_A ||
-      tileType === LETTER_N) {
-
-    // If we have a loaded image for this letter, draw it
-    let letterImg = letterImages[tileType];
-    if (letterImg) {
-      ctx.drawImage(letterImg, c*TILE_SIZE, r*TILE_SIZE, TILE_SIZE, TILE_SIZE);
+  if ([LETTER_S, LETTER_E, LETTER_A, LETTER_N].includes(tileType)) {
+    let img = letterImages[tileType];
+    if (img) {
+      ctx.drawImage(img, c*TILE_SIZE, r*TILE_SIZE, TILE_SIZE, TILE_SIZE);
       return;
     }
   }
-
-  // Fallback for walls, floors, traps, etc.
+  // fallback
   const color = TILE_COLORS[tileType] || "#000";
   ctx.fillStyle = color;
   ctx.fillRect(c*TILE_SIZE, r*TILE_SIZE, TILE_SIZE, TILE_SIZE);
 }
 
 // ------------------------------------------------------
-// GENERATE + PLACE FEATURES (seeded random)
+// GENERATE + PLACE FEATURES
 // ------------------------------------------------------
 function generateMaze() {
   maze = Array.from({length: ROWS}, () => Array(COLS).fill(WALL));
@@ -358,10 +360,9 @@ function generateMaze() {
 
   function carve(r, c) {
     visited[r][c] = true;
-    maze[r][c] = FLOOR;
+    maze[r][c]    = FLOOR;
 
     let directions = [[0,1],[0,-1],[1,0],[-1,0]];
-    // shuffle with seeded random
     for (let i = directions.length - 1; i > 0; i--) {
       let j = sRandRange(0, i);
       [directions[i], directions[j]] = [directions[j], directions[i]];
@@ -415,17 +416,6 @@ function placeFeatures() {
     maze[r][c] = TIME_ITEM;
   }
 
-  // Key
-  let keyPlaced = false;
-  while (!keyPlaced) {
-    let r = sRandRange(1, ROWS-2);
-    let c = sRandRange(1, COLS-2);
-    if (maze[r][c] === FLOOR && !restrictedArea(r, c)) {
-      maze[r][c] = KEY_ITEM;
-      keyPlaced = true;
-    }
-  }
-
   // Letters S, E, A, N
   const letters = [LETTER_S, LETTER_E, LETTER_A, LETTER_N];
   for (let letter of letters) {
@@ -442,7 +432,7 @@ function placeFeatures() {
 }
 
 // ------------------------------------------------------
-// MOVEMENT & LETTER COLLECTION
+// MOVEMENT & COLLECTION
 // ------------------------------------------------------
 function setupInput() {
   window.addEventListener("keydown", (e) => {
@@ -479,9 +469,6 @@ function tryMovePlayer(dr, dc) {
 
   let tile = maze[newR][newC];
   switch (tile) {
-    case KEY_ITEM:
-      maze[newR][newC] = FLOOR;
-      break;
     case TIME_ITEM:
       timeElapsed -= 5;
       if (timeElapsed < 0) timeElapsed = 0;
@@ -498,14 +485,14 @@ function tryMovePlayer(dr, dc) {
     case LETTER_A:
     case LETTER_N:
       collectLetter(tile);
-      // Turn tile to floor so we don’t need to step twice
       maze[newR][newC] = FLOOR;
       if (player.collectedLetters.length === 4) {
-        endGame();
+        endGame(true);
       }
       break;
     default:
-      // floor, crack, etc.
+      // floor, crack, key, etc.
+      maze[newR][newC] = FLOOR;
       break;
   }
 }
@@ -513,7 +500,6 @@ function tryMovePlayer(dr, dc) {
 function isPassableForPlayer(r, c) {
   if (!inBounds(r, c)) return false;
   const tile = maze[r][c];
-  // Include letters so the player can step on them
   return [
     FLOOR,
     CRACK_WALL,
@@ -528,12 +514,12 @@ function isPassableForPlayer(r, c) {
 }
 
 function collectLetter(letterType) {
-  let letter = '';
+  let letter = "";
   switch(letterType) {
-    case LETTER_S: letter = 'S'; break;
-    case LETTER_E: letter = 'E'; break;
-    case LETTER_A: letter = 'A'; break;
-    case LETTER_N: letter = 'N'; break;
+    case LETTER_S: letter = "S"; break;
+    case LETTER_E: letter = "E"; break;
+    case LETTER_A: letter = "A"; break;
+    case LETTER_N: letter = "N"; break;
   }
   if (!player.collectedLetters.includes(letter)) {
     player.collectedLetters.push(letter);
@@ -548,22 +534,22 @@ function collectLetter(letterType) {
 
 function updateLettersUI() {
   const letterBoxes = {
-    'S': document.getElementById('letterBoxS'),
-    'E': document.getElementById('letterBoxE'),
-    'A': document.getElementById('letterBoxA'),
-    'N': document.getElementById('letterBoxN')
+    S: document.getElementById("letterBoxS"),
+    E: document.getElementById("letterBoxE"),
+    A: document.getElementById("letterBoxA"),
+    N: document.getElementById("letterBoxN")
   };
-  ['S','E','A','N'].forEach(l => {
+  ["S","E","A","N"].forEach(l => {
     if (player.collectedLetters.includes(l)) {
-      letterBoxes[l].classList.add('active');
+      letterBoxes[l].classList.add("active");
     } else {
-      letterBoxes[l].classList.remove('active');
+      letterBoxes[l].classList.remove("active");
     }
   });
 }
 
 // ------------------------------------------------------
-// ENEMY ("SEAN") BFS
+// ENEMY ("SEAN")
 // ------------------------------------------------------
 function spawnEnemy() {
   enemy.active = true;
@@ -582,7 +568,7 @@ function spawnEnemy() {
 function isPassableForEnemy(r, c) {
   if (!inBounds(r, c)) return false;
   const tile = maze[r][c];
-  // No cracked walls for the enemy
+  // no cracked walls
   return [
     FLOOR,
     TRAP_FLOOR,
@@ -597,6 +583,7 @@ function isPassableForEnemy(r, c) {
 
 function moveEnemyBFS() {
   if (!enemy.active) return;
+  // if on player => lost
   if (enemy.row === player.row && enemy.col === player.col) {
     youGotSeaned();
     return;
@@ -605,14 +592,14 @@ function moveEnemyBFS() {
   const start = { r: enemy.row, c: enemy.col };
   const goal  = { r: player.row, c: player.col };
 
-  let queue = [];
-  let visitedBFS = Array.from({length: ROWS}, () => Array(COLS).fill(false));
-  let parent = Array.from({length: ROWS}, () => Array(COLS).fill(null));
+  let queue       = [];
+  let visitedBFS  = Array.from({length: ROWS}, () => Array(COLS).fill(false));
+  let parent      = Array.from({length: ROWS}, () => Array(COLS).fill(null));
 
   queue.push(start);
   visitedBFS[start.r][start.c] = true;
-  let found = false;
 
+  let found = false;
   while (queue.length > 0) {
     let {r, c} = queue.shift();
     if (r === goal.r && c === goal.c) {
@@ -627,9 +614,9 @@ function moveEnemyBFS() {
     ];
     for (let n of neighbors) {
       if (inBounds(n.nr, n.nc) && !visitedBFS[n.nr][n.nc]) {
-        if (isPassableForEnemy(n.nr, n.nc) || (n.nr === goal.r && n.nc === goal.c)) {
+        if (isPassableForEnemy(n.nr, n.nc) || (n.nr===goal.r && n.nc===goal.c)) {
           visitedBFS[n.nr][n.nc] = true;
-          parent[n.nr][n.nc] = { r, c };
+          parent[n.nr][n.nc]     = { r, c };
           queue.push({ r: n.nr, c: n.nc });
         }
       }
@@ -640,7 +627,7 @@ function moveEnemyBFS() {
 
   let path = [];
   let cur = { r: goal.r, c: goal.c };
-  while (cur && !(cur.r === start.r && cur.c === start.c)) {
+  while (cur && !(cur.r===start.r && cur.c===start.c)) {
     path.push(cur);
     cur = parent[cur.r][cur.c];
   }
@@ -661,68 +648,82 @@ function moveEnemyBFS() {
 // ------------------------------------------------------
 function showTrapPopup() {
   const popup = document.getElementById("popup");
-  popup.style.display = "block";
-  popup.textContent = "You fell into a trap!";
-  trapPopupTimer = TRAP_MESSAGE_DURATION;
+  if (popup) {
+    popup.style.display = "block";
+    popup.textContent = "You fell into a trap!";
+    trapPopupTimer = TRAP_MESSAGE_DURATION;
+  }
 }
 
 function showSeanSummonedPopup() {
   const p = document.getElementById("seanSummonedPopup");
-  p.style.display = "block";
-  seanSummonedTimer = SEAN_SUMMONED_DURATION;
+  if (p) {
+    p.style.display = "block";
+    seanSummonedTimer = SEAN_SUMMONED_DURATION;
+  }
 }
 
 function youGotSeaned() {
-  gameRunning = false;
-  showEndGamePopup(false);
+  endGame(false); 
 }
 
-function endGame() {
+function endGame(isWin) {
   gameRunning = false;
-  showEndGamePopup(true);
+  showEndGamePopup(isWin);
+
+  // Dispatch event so localStorage can be set
+  const event = new CustomEvent('gameCompleted', {
+    detail: {
+      isWin: isWin,
+      gameTime: timeElapsed
+    }
+  });
+  document.dispatchEvent(event);
 }
 
 function showEndGamePopup(isWin) {
   hideElement("popup");
   hideElement("seanSummonedPopup");
 
-  const endGameDiv = document.getElementById("endGamePopup");
+  const endGameDiv  = document.getElementById("endGamePopup");
   const endGameText = document.getElementById("endGameText");
-  endGameDiv.style.display = "block";
-
-  if (isWin) {
-    let finalTime = timeElapsed.toFixed(2);
-    endGameText.textContent =
-      `Congrats! You collected S, E, A, N in ${finalTime} seconds.`;
-  } else {
-    endGameText.textContent = "You got Seaned! Try again tomorrow.";
+  if (endGameDiv && endGameText) {
+    endGameDiv.style.display = "block";
+    if (isWin) {
+      endGameText.textContent = `Congrats! You collected S, E, A, N in ${timeElapsed.toFixed(2)} seconds.`;
+    } else {
+      endGameText.textContent = "You got Seaned! Try again tomorrow.";
+    }
   }
 }
-  
+
 // ------------------------------------------------------
-// SHARING (with "Copied to clipboard!" feedback)
+// SHARING
 // ------------------------------------------------------
 function copyResultsToClipboard() {
-  const endGameText = document.getElementById("endGameText").textContent;
+  const endGameText = document.getElementById("endGameText");
   let shareMessage = "";
 
-  if (endGameText.includes("Congrats!")) {
-    // Win
+  if (endGameText && endGameText.textContent.includes("Congrats!")) {
     shareMessage = `I completed Daily Seanle #${dayIndex} in ${timeElapsed.toFixed(2)} seconds! Can you do better: https://dailyseanle.com`;
-  } else {
-    // Lose
+  } else if (endGameText && endGameText.textContent.includes("You got Seaned")) {
     shareMessage = `I got Seaned on Daily Seanle #${dayIndex}! Can you do better: https://dailyseanle.com`;
+  } else {
+    console.error("Unable to determine game result for sharing.");
+    return;
   }
 
   navigator.clipboard.writeText(shareMessage)
     .then(() => {
       console.log("Results copied to clipboard!");
       const feedback = document.getElementById("shareFeedback");
-      feedback.style.display = "block";
-      feedback.textContent = "Copied to clipboard!";
-      setTimeout(() => {
-        feedback.style.display = "none";
-      }, 3000);
+      if (feedback) {
+        feedback.style.display = "block";
+        feedback.textContent = "Copied to clipboard!";
+        setTimeout(() => {
+          feedback.style.display = "none";
+        }, 3000);
+      }
     })
     .catch(err => {
       console.error("Failed to copy: ", err);
