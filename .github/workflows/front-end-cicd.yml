@@ -1,4 +1,4 @@
-name: Deploy to S3 and Invalidate CloudFront
+name: Upload website to S3
 
 on:
   push:
@@ -6,15 +6,11 @@ on:
       - main
 
 jobs:
-    deploy:
+  deploy:
     runs-on: ubuntu-latest
     steps:
-      # Step 1: Check out your repo
-      - uses: actions/checkout@v2
-      # Step 2: Sync files to S3 using jakejarvis/s3-sync-action
+      - uses: actions/checkout@master
       - uses: jakejarvis/s3-sync-action@master
-        with:
-          args: --delete --follow-symlinks
         env:
           AWS_S3_BUCKET: ${{ secrets.AWS_S3_BUCKET }}
           AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
