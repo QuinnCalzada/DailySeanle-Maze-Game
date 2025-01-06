@@ -153,12 +153,11 @@ window.onload = function () {
 };
 
 function setupInvisibleJoystick() {
-  const canvas = document.getElementById("gameCanvas");
   let startX, startY, activeDirection;
   let isHolding = false;
   let holdInterval;
 
-  canvas.addEventListener("touchstart", (e) => {
+  document.body.addEventListener("touchstart", (e) => {
     e.preventDefault(); // Prevent default touch behavior
     const touch = e.touches[0];
     startX = touch.clientX;
@@ -172,7 +171,7 @@ function setupInvisibleJoystick() {
     }, 100); // Adjust interval as needed
   });
 
-  canvas.addEventListener("touchmove", (e) => {
+  document.body.addEventListener("touchmove", (e) => {
     e.preventDefault();
     const touch = e.touches[0];
     const dx = touch.clientX - startX;
@@ -195,7 +194,7 @@ function setupInvisibleJoystick() {
     }
   });
 
-  canvas.addEventListener("touchend", (e) => {
+  document.body.addEventListener("touchend", (e) => {
     e.preventDefault();
     isHolding = false;
     clearInterval(holdInterval);
@@ -301,6 +300,15 @@ function handlePlayOncePerDay() {
 function initGame() {
   canvas = document.getElementById("gameCanvas");
   ctx = canvas.getContext("2d");
+
+  // Adjust canvas size for mobile
+  if (window.innerWidth < 768) { // Mobile screen size
+    canvas.width = window.innerWidth - 20; // Leave some margin
+    canvas.height = window.innerWidth - 20; // Keep it square
+  } else {
+    canvas.width = 640;
+    canvas.height = 640;
+  }
 
   rngState = puzzleSeed; // set seed
 
