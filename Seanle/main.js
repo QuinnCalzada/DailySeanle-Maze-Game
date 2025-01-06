@@ -130,7 +130,7 @@ window.onload = function () {
     // 2) Then init game
     initGame();
     setupInput(); // Existing keyboard-based input
-    setupSwipeControls(); // Add swipe gesture input
+    setupInvisibleJoystick(); // Add invisible joystick controls
 
     // 3) Handle once-per-day logic
     handlePlayOncePerDay();
@@ -152,49 +152,72 @@ window.onload = function () {
   });
 };
 
-function setupSwipeControls() {
+function setupInvisibleJoystick() {
   const canvas = document.getElementById("gameCanvas");
-  let startX, startY;
+  let startX, startY, activeDirection;
+  let isHolding = false;
+  let holdInterval;
 
   canvas.addEventListener("touchstart", (e) => {
     e.preventDefault(); // Prevent default touch behavior
     const touch = e.touches[0];
     startX = touch.clientX;
     startY = touch.clientY;
+    activeDirection = null;
+    isHolding = true;
+    holdInterval = setInterval(() => {
+      if (activeDirection && isHolding) {
+        moveInDirection(activeDirection);
+      }
+    }, 100); // Adjust interval as needed
   });
 
-  canvas.addEventListener("touchend", (e) => {
-    e.preventDefault(); // Prevent default touch behavior
-    const touch = e.changedTouches[0];
-    const endX = touch.clientX;
-    const endY = touch.clientY;
-
-    const dx = endX - startX;
-    const dy = endY - startY;
+  canvas.addEventListener("touchmove", (e) => {
+    e.preventDefault();
+    const touch = e.touches[0];
+    const dx = touch.clientX - startX;
+    const dy = touch.clientY - startY;
 
     if (Math.abs(dx) > Math.abs(dy)) {
       // Horizontal swipe
       if (dx > 30) {
-        tryMovePlayer(0, 1); // Swipe right
+        activeDirection = "right"; // Swipe right
       } else if (dx < -30) {
-        tryMovePlayer(0, -1); // Swipe left
+        activeDirection = "left"; // Swipe left
       }
     } else {
       // Vertical swipe
       if (dy > 30) {
-        tryMovePlayer(1, 0); // Swipe down
+        activeDirection = "down"; // Swipe down
       } else if (dy < -30) {
-        tryMovePlayer(-1, 0); // Swipe up
+        activeDirection = "up"; // Swipe up
       }
     }
   });
 
-  // Prevent default browser scrolling on touchmove
-  canvas.addEventListener("touchmove", (e) => {
+  canvas.addEventListener("touchend", (e) => {
     e.preventDefault();
+    isHolding = false;
+    clearInterval(holdInterval);
   });
-}
 
+  function moveInDirection(direction) {
+    switch (direction) {
+      case "right":
+        tryMovePlayer(0, 1);
+        break;
+      case "left":
+        tryMovePlayer(0, -1);
+        break;
+      case "down":
+        tryMovePlayer(1, 0);
+        break;
+      case "up":
+        tryMovePlayer(-1, 0);
+        break;
+    }
+  }
+}
 
 // ------------------------------------------------------
 // PLAY ONCE PER DAY
