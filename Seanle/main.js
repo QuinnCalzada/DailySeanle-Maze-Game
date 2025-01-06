@@ -154,6 +154,81 @@ window.onload = function() {
 };
 
 // ------------------------------------------------------
+// PLAY ONCE PER DAY LOGIC
+// ------------------------------------------------------
+
+// Function to format date as YYYY-MM-DD
+function getFormattedDate() {
+  const today = new Date();
+  const year = today.getFullYear();
+  const month = String(today.getMonth() + 1).padStart(2, '0');
+  const day = String(today.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
+// Function to check if user has played today
+function hasPlayedToday() {
+  const lastPlayed = localStorage.getItem('lastPlayedDate');
+  const today = getFormattedDate();
+  return lastPlayed === today;
+}
+
+// Function to set the play flag
+function setPlayedFlag() {
+  const today = getFormattedDate();
+  localStorage.setItem('lastPlayedDate', today);
+}
+
+// Function to handle play once per day
+function handlePlayOncePerDay() {
+  const alreadyPlayedDiv = document.getElementById('alreadyPlayedMessage');
+
+  // Create a message div to show if the user has already played
+  const messageDiv = document.createElement('div');
+  messageDiv.id = 'alreadyPlayedMessage';
+  messageDiv.style.display = 'none';
+  messageDiv.style.fontSize = '1.2em';
+  messageDiv.style.color = 'green';
+  messageDiv.style.textAlign = 'center';
+  messageDiv.style.marginTop = '20px';
+  messageDiv.textContent = 'You have already played today. Come back tomorrow!';
+  document.body.insertBefore(messageDiv, document.getElementById('gameContainer'));
+
+  if (hasPlayedToday()) {
+    // User has already played today
+    messageDiv.style.display = 'block';
+    // Hide the rules popup and game container
+    hideElement("rulesPopup");
+    hideElement("gameContainer");
+  } else {
+    // Show the rules popup
+    showElement("rulesPopup");
+  }
+
+  // Listen for game completion event
+  document.addEventListener('gameCompleted', () => {
+    // Set the play flag
+    setPlayedFlag();
+    // Hide the game and show the end game popup
+    hideElement("gameContainer");
+    showElement("endGamePopup");
+    document.getElementById('endGameText').textContent = 'Congratulations! You completed the game. Come back tomorrow.';
+  });
+}
+
+// Adjust existing game completion logic
+// For example, in your endGame() function, after showing popups, dispatch the 'gameCompleted' event
+function endGame() {
+  gameRunning = false;
+  showEndGamePopup(true);
+  
+  // Dispatch 'gameCompleted' event
+  const event = new Event('gameCompleted');
+  document.dispatchEvent(event);
+}
+
+
+// ------------------------------------------------------
 // INIT GAME
 // ------------------------------------------------------
 function initGame() {
