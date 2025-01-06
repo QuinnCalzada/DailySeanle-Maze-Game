@@ -72,10 +72,12 @@ const SEAN_SUMMONED_DURATION = 500;
 // ------------------------------------------------------
 // DAILY LOGIC: dayIndex & seeded RNG
 // ------------------------------------------------------
-const REFERENCE_DATE = new Date(2023, 0, 1); // Jan 1, 2023
+const REFERENCE_DATE = new Date(2025, 0, 5); // Jan 5, 2025
 const now = new Date();
 let dayIndex = Math.floor((now - REFERENCE_DATE) / (1000 * 60 * 60 * 24)) + 1;
 let puzzleSeed = dayIndex;
+
+document.getElementById("dailySeanleHeading").textContent = `Daily Seanle #${dayIndex}`;
 
 // A simple seeded RNG
 let rngState = puzzleSeed;
