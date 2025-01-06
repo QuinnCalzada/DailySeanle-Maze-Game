@@ -22,24 +22,21 @@ const LETTER_E   = 7;
 const LETTER_A   = 8;
 const LETTER_N   = 9;
 
-// Color or visuals for each tile (if you’re not using images)
+// We’ll keep color fallback for non-letter tiles
 const TILE_COLORS = {
-  [WALL]       : "#444",
-  [FLOOR]      : "#cccccc",
-  [CRACK_WALL] : "#666666",
-  [TRAP_FLOOR] : "#880000",
-  [KEY_ITEM]   : "gold",
-  [TIME_ITEM]  : "cyan",
-  [LETTER_S]   : "#6aaa64",
-  [LETTER_E]   : "#6aaa64",
-  [LETTER_A]   : "#6aaa64",
-  [LETTER_N]   : "#6aaa64"
+  [WALL]:       "#444",
+  [FLOOR]:      "#cccccc",
+  [CRACK_WALL]: "#666666",
+  [TRAP_FLOOR]: "#880000",
+  [KEY_ITEM]:   "gold",
+  [TIME_ITEM]:  "cyan"
 };
 
+// For the player & enemy
 const PLAYER_COLOR = "yellow";
 const ENEMY_COLOR  = "red";
 
-// The enemy moves every 0.1 seconds (100 ms)
+// Enemy moves every 0.1 seconds
 const ENEMY_MOVE_INTERVAL = 100; // ms
 
 // Maze + Player + Enemy
@@ -55,34 +52,33 @@ let player = {
 
 let startPos = { row: 1, col: 1 };
 let timeElapsed = 0;
-let gameRunning = false; 
-let lastFrameTime = 0; 
+let gameRunning = false;
+let lastFrameTime = 0;
 
-// Enemy ("Sean")
 let enemy = {
   row: -1,
   col: -1,
   active: false
 };
 
-// Popup timers
+// Trap popup timer
 let trapPopupTimer = 0;
-const TRAP_MESSAGE_DURATION = 1000; // 1s
+const TRAP_MESSAGE_DURATION = 1000;
+
+// Sean-summoned timer
 let seanSummonedTimer = 0;
 const SEAN_SUMMONED_DURATION = 500;
 
 // ------------------------------------------------------
 // DAILY LOGIC: dayIndex & seeded RNG
 // ------------------------------------------------------
-const REFERENCE_DATE = new Date(2025, 0, 5); // Jan 1, 2023
+const REFERENCE_DATE = new Date(2023, 0, 1); // Jan 1, 2023
 const now = new Date();
-let dayIndex = Math.floor((now - REFERENCE_DATE) / (1000 * 60 * 60 * 24)) + 1; 
-// e.g., if 2023-01-01 => dayIndex = 1, etc.
+let dayIndex = Math.floor((now - REFERENCE_DATE) / (1000 * 60 * 60 * 24)) + 1;
+let puzzleSeed = dayIndex;
 
-let puzzleSeed = dayIndex; // The seed for this daily puzzle
-
-// A simple seeded RNG (Linear Congruential Generator example)
-let rngState = puzzleSeed; 
+// A simple seeded RNG
+let rngState = puzzleSeed;
 function seededRandom() {
   rngState = (1103515245 * rngState + 12345) & 0x7fffffff;
   return (rngState / 0x80000000);
@@ -92,29 +88,67 @@ function sRandRange(min, max) {
 }
 
 // ------------------------------------------------------
+// LETTER IMAGES for S/E/A/N
+// ------------------------------------------------------
+// We'll load four images specifically for the letters.
+let letterImages = {
+  [LETTER_S]: null,
+  [LETTER_E]: null,
+  [LETTER_A]: null,
+  [LETTER_N]: null
+};
+
+function loadLetterImages(onComplete) {
+  const lettersToLoad = [
+    { type: LETTER_S, src: "assets/letter_s.png" },
+    { type: LETTER_E, src: "assets/letter_e.png" },
+    { type: LETTER_A, src: "assets/letter_a.png" },
+    { type: LETTER_N, src: "assets/letter_n.png" }
+  ];
+  let loadedCount = 0;
+  let total = lettersToLoad.length;
+
+  lettersToLoad.forEach(item => {
+    let img = new Image();
+    img.onload = () => {
+      loadedCount++;
+      if (loadedCount === total) {
+        onComplete();
+      }
+    };
+    img.src = item.src;
+    letterImages[item.type] = img;
+  });
+}
+
+// ------------------------------------------------------
 // WINDOW ONLOAD
 // ------------------------------------------------------
 window.onload = function() {
-  initGame();
-  setupInput();
+  // 1) Load letter images first
+  loadLetterImages(() => {
+    // 2) Then initialize the game once images are ready
+    initGame();
+    setupInput();
 
-  // Show the rules popup first
-  showElement("rulesPopup");
+    // Show rules popup first
+    showElement("rulesPopup");
 
-  // Enemy moves on an interval if gameRunning + enemy.active
-  setInterval(() => {
-    if (gameRunning && enemy.active) {
-      moveEnemyBFS();
-    }
-  }, ENEMY_MOVE_INTERVAL);
+    // Enemy interval
+    setInterval(() => {
+      if (gameRunning && enemy.active) {
+        moveEnemyBFS();
+      }
+    }, ENEMY_MOVE_INTERVAL);
 
-  // Share button
-  const shareBtn = document.getElementById("shareBtn");
-  shareBtn.addEventListener("click", copyResultsToClipboard);
+    // Setup share button
+    const shareBtn = document.getElementById("shareBtn");
+    shareBtn.addEventListener("click", copyResultsToClipboard);
 
-  // Start button to close rules popup and start the loop
-  const startGameBtn = document.getElementById("startGameBtn");
-  startGameBtn.addEventListener("click", startGame);
+    // Start button
+    const startGameBtn = document.getElementById("startGameBtn");
+    startGameBtn.addEventListener("click", startGame);
+  });
 };
 
 // ------------------------------------------------------
@@ -124,7 +158,7 @@ function initGame() {
   canvas = document.getElementById("gameCanvas");
   ctx = canvas.getContext("2d");
 
-  // Seed the RNG with puzzleSeed (dayIndex)
+  // Set puzzle seed
   rngState = puzzleSeed;
 
   generateMaze();
@@ -156,12 +190,12 @@ function startGame() {
 }
 
 // ------------------------------------------------------
-// GAME LOOP (time + draw) using real timestamps
+// MAIN LOOP
 // ------------------------------------------------------
 function gameLoop(timestamp) {
   if (!gameRunning) return;
 
-  let dt = (timestamp - lastFrameTime) / 1000; // seconds
+  let dt = (timestamp - lastFrameTime) / 1000;
   lastFrameTime = timestamp;
 
   timeElapsed += dt;
@@ -185,7 +219,7 @@ function gameLoop(timestamp) {
 }
 
 // ------------------------------------------------------
-// DRAW
+// DRAW - uses letterImages for S/E/A/N tiles
 // ------------------------------------------------------
 function draw() {
   ctx.clearRect(0, 0, canvas.width, canvas.height);
@@ -195,32 +229,51 @@ function draw() {
       let dist = Math.abs(r - player.row) + Math.abs(c - player.col);
       if (dist <= LIGHT_RADIUS) {
         let tileType = maze[r][c];
-        ctx.fillStyle = TILE_COLORS[tileType] || "#000";
-        ctx.fillRect(c*TILE_SIZE, r*TILE_SIZE, TILE_SIZE, TILE_SIZE);
+        drawTile(r, c, tileType);
       } else {
+        // darkness
         ctx.fillStyle = "#000";
         ctx.fillRect(c*TILE_SIZE, r*TILE_SIZE, TILE_SIZE, TILE_SIZE);
       }
     }
   }
 
-  // Draw player
-  let px = player.col * TILE_SIZE;
-  let py = player.row * TILE_SIZE;
+  // Player
   ctx.fillStyle = PLAYER_COLOR;
-  ctx.fillRect(px + 8, py + 8, TILE_SIZE - 16, TILE_SIZE - 16);
+  ctx.fillRect(player.col*TILE_SIZE + 8, player.row*TILE_SIZE + 8,
+               TILE_SIZE - 16, TILE_SIZE - 16);
 
-  // Draw enemy
+  // Enemy
   if (enemy.active) {
-    let ex = enemy.col * TILE_SIZE;
-    let ey = enemy.row * TILE_SIZE;
     ctx.fillStyle = ENEMY_COLOR;
-    ctx.fillRect(ex + 8, ey + 8, TILE_SIZE - 16, TILE_SIZE - 16);
+    ctx.fillRect(enemy.col*TILE_SIZE + 8, enemy.row*TILE_SIZE + 8,
+                 TILE_SIZE - 16, TILE_SIZE - 16);
   }
 }
 
+// If tile is a letter, draw the image; otherwise, fallback to color
+function drawTile(r, c, tileType) {
+  if (tileType === LETTER_S ||
+      tileType === LETTER_E ||
+      tileType === LETTER_A ||
+      tileType === LETTER_N) {
+
+    // If we have a loaded image for this letter, draw it
+    let letterImg = letterImages[tileType];
+    if (letterImg) {
+      ctx.drawImage(letterImg, c*TILE_SIZE, r*TILE_SIZE, TILE_SIZE, TILE_SIZE);
+      return;
+    }
+  }
+
+  // Fallback for walls, floors, traps, etc.
+  const color = TILE_COLORS[tileType] || "#000";
+  ctx.fillStyle = color;
+  ctx.fillRect(c*TILE_SIZE, r*TILE_SIZE, TILE_SIZE, TILE_SIZE);
+}
+
 // ------------------------------------------------------
-// MAZE GENERATION
+// GENERATE + PLACE FEATURES (seeded random)
 // ------------------------------------------------------
 function generateMaze() {
   maze = Array.from({length: ROWS}, () => Array(COLS).fill(WALL));
@@ -249,7 +302,7 @@ function generateMaze() {
 
   carve(1,1);
 
-  // 5% chance to convert WALL to CRACK_WALL
+  // Convert some walls to CRACK_WALL
   for (let r = 1; r < ROWS-1; r++) {
     for (let c = 1; c < COLS-1; c++) {
       if (maze[r][c] === WALL && seededRandom() < 0.05) {
@@ -265,7 +318,7 @@ function placeFeatures() {
 
   const restrictedArea = (r, c) => (r >= 1 && r <= 5 && c >= 1 && c <= 5);
 
-  // Place trap floors
+  // Trap floors
   for (let i = 0; i < 5; i++) {
     let r, c;
     do {
@@ -275,7 +328,7 @@ function placeFeatures() {
     maze[r][c] = TRAP_FLOOR;
   }
 
-  // Place time items
+  // Time items
   for (let i = 0; i < 4; i++) {
     let r, c;
     do {
@@ -285,7 +338,7 @@ function placeFeatures() {
     maze[r][c] = TIME_ITEM;
   }
 
-  // Place key (optional)
+  // Key
   let keyPlaced = false;
   while (!keyPlaced) {
     let r = sRandRange(1, ROWS-2);
@@ -296,7 +349,7 @@ function placeFeatures() {
     }
   }
 
-  // Letters
+  // Letters S, E, A, N
   const letters = [LETTER_S, LETTER_E, LETTER_A, LETTER_N];
   for (let letter of letters) {
     let placed = false;
@@ -312,7 +365,7 @@ function placeFeatures() {
 }
 
 // ------------------------------------------------------
-// MOVEMENT & COLLECTING LETTERS
+// MOVEMENT & LETTER COLLECTION
 // ------------------------------------------------------
 function setupInput() {
   window.addEventListener("keydown", (e) => {
@@ -344,15 +397,12 @@ function tryMovePlayer(dr, dc) {
   if (!inBounds(newR, newC)) return;
   if (!isPassableForPlayer(newR, newC)) return;
 
-  // Move player
   player.row = newR;
   player.col = newC;
 
-  // Check tile
   let tile = maze[newR][newC];
   switch (tile) {
     case KEY_ITEM:
-      // pick up key, turn to floor
       maze[newR][newC] = FLOOR;
       break;
     case TIME_ITEM:
@@ -364,7 +414,6 @@ function tryMovePlayer(dr, dc) {
       showTrapPopup();
       player.row = startPos.row;
       player.col = startPos.col;
-      // remove the trap tile
       maze[newR][newC] = FLOOR;
       break;
     case LETTER_S:
@@ -372,7 +421,7 @@ function tryMovePlayer(dr, dc) {
     case LETTER_A:
     case LETTER_N:
       collectLetter(tile);
-      // CRITICAL: turn letter tile to floor immediately
+      // Turn tile to floor so we don’t need to step twice
       maze[newR][newC] = FLOOR;
       if (player.collectedLetters.length === 4) {
         endGame();
@@ -387,7 +436,7 @@ function tryMovePlayer(dr, dc) {
 function isPassableForPlayer(r, c) {
   if (!inBounds(r, c)) return false;
   const tile = maze[r][c];
-  // Ensure letters are included so you can step on them
+  // Include letters so the player can step on them
   return [
     FLOOR,
     CRACK_WALL,
@@ -401,7 +450,6 @@ function isPassableForPlayer(r, c) {
   ].includes(tile);
 }
 
-// Called from tryMovePlayer if we land on S/E/A/N
 function collectLetter(letterType) {
   let letter = '';
   switch(letterType) {
@@ -412,7 +460,7 @@ function collectLetter(letterType) {
   }
   if (!player.collectedLetters.includes(letter)) {
     player.collectedLetters.push(letter);
-    // If it's the 3rd letter => spawn enemy
+    // If 3rd letter => spawn enemy
     if (player.collectedLetters.length === 3 && !enemy.active) {
       spawnEnemy();
       showSeanSummonedPopup();
@@ -457,7 +505,7 @@ function spawnEnemy() {
 function isPassableForEnemy(r, c) {
   if (!inBounds(r, c)) return false;
   const tile = maze[r][c];
-  // no cracked walls for Sean
+  // No cracked walls for the enemy
   return [
     FLOOR,
     TRAP_FLOOR,
@@ -581,7 +629,6 @@ function copyResultsToClipboard() {
   const endGameText = document.getElementById("endGameText").textContent;
   let shareMessage = "";
 
-  // dayIndex is the puzzle number
   if (endGameText.includes("Congrats!")) {
     // Win
     shareMessage = `I completed Daily Seanle #${dayIndex} in ${timeElapsed.toFixed(2)} seconds! Can you do better: https://dailyseanle.com`;
@@ -593,12 +640,9 @@ function copyResultsToClipboard() {
   navigator.clipboard.writeText(shareMessage)
     .then(() => {
       console.log("Results copied to clipboard!");
-      // Show "Copied to clipboard!" below the share button
       const feedback = document.getElementById("shareFeedback");
       feedback.style.display = "block";
       feedback.textContent = "Copied to clipboard!";
-
-      // Hide it after 3s if desired
       setTimeout(() => {
         feedback.style.display = "none";
       }, 3000);
