@@ -124,12 +124,13 @@ function loadLetterImages(onComplete) {
 // ------------------------------------------------------
 // window.onload
 // ------------------------------------------------------
-window.onload = function() {
+window.onload = function () {
   // 1) Load images first
   loadLetterImages(() => {
     // 2) Then init game
     initGame();
-    setupInput();
+    setupInput(); // Existing keyboard-based input
+    setupSwipeControls(); // Add swipe gesture input
 
     // 3) Handle once-per-day logic
     handlePlayOncePerDay();
@@ -150,6 +151,42 @@ window.onload = function() {
     startGameBtn.addEventListener("click", startGame);
   });
 };
+
+function setupSwipeControls() {
+  const canvas = document.getElementById("gameCanvas");
+  let startX, startY;
+
+  canvas.addEventListener("touchstart", (e) => {
+    const touch = e.touches[0];
+    startX = touch.clientX;
+    startY = touch.clientY;
+  });
+
+  canvas.addEventListener("touchend", (e) => {
+    const touch = e.changedTouches[0];
+    const endX = touch.clientX;
+    const endY = touch.clientY;
+
+    const dx = endX - startX;
+    const dy = endY - startY;
+
+    if (Math.abs(dx) > Math.abs(dy)) {
+      // Horizontal swipe
+      if (dx > 30) {
+        tryMovePlayer(0, 1); // Swipe right
+      } else if (dx < -30) {
+        tryMovePlayer(0, -1); // Swipe left
+      }
+    } else {
+      // Vertical swipe
+      if (dy > 30) {
+        tryMovePlayer(1, 0); // Swipe down
+      } else if (dy < -30) {
+        tryMovePlayer(-1, 0); // Swipe up
+      }
+    }
+  });
+}
 
 // ------------------------------------------------------
 // PLAY ONCE PER DAY

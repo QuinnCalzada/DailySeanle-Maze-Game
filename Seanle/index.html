@@ -11,7 +11,7 @@
   <!-- Heading -->
   <h1 id="dailySeanleHeading">Loading Daily Seanle...</h1>
 
-  <!-- Letters "S E A N" displayed at the top -->
+  <!-- Letters "S E A N" -->
   <div class="letter-container" id="seanLetters">
     <div class="letter-box" id="letterBoxS">S</div>
     <div class="letter-box" id="letterBoxE">E</div>
@@ -21,51 +21,49 @@
   
   <!-- Info Panel -->
   <div id="infoPanel">
-    <div>Time: <span id="timeLabel">0</span> seconds</div>
+    <div>Time: <span id="timeLabel">0.00</span> seconds</div>
   </div>
 
-  <!-- Main game area -->
+  <!-- Game Container -->
   <div id="gameContainer">
+    <!-- Maze Canvas -->
     <canvas id="gameCanvas" width="640" height="640"></canvas>
 
-    <!-- Minor popup for trap -->
+    <!-- Minor Popup (e.g., Trap Notification) -->
     <div id="popup">You fell into a trap!</div>
 
-    <!-- Sean Summoned popup -->
+    <!-- Sean Summoned Popup -->
     <div id="seanSummonedPopup" class="popup">
       Sean is now in the maze!
     </div>
 
-    <!-- End Game popup -->
+    <!-- End Game Popup -->
     <div id="endGamePopup" class="popup">
       <div id="endGameText"></div>
       <button id="shareBtn">
-        <!-- Clipboard icon -->
+        <!-- Clipboard Icon -->
         <img src="assets/clipboard.png" alt="Clipboard"
              style="width:16px; height:16px; margin-right:6px;" />
         Share
       </button>
-      <div id="shareFeedback" style="color: #c9b458; margin-top: 8px; display: none;">
-        <!-- "Copied to clipboard!" will appear here -->
-      </div>
+      <div id="shareFeedback">Copied to clipboard!</div>
     </div>
 
-    <!-- Rules popup shown at page load -->
+    <!-- Rules Popup (Shown at Page Load) -->
     <div id="rulesPopup" class="popup">
       <h2>How to Play Daily Seanle</h2>
       <p align="left">
-          1. Collect letters hidden in the maze to spell SEAN.<br/>
-          2. Avoid traps, which send you back to the start.<br/>
-          3. Collect hourglasses to gain extra time.<br/>
-          4. Look out for miscolored walls that you can sneak through.<br/>
-          5. Beware of Sean, who will apear once you collect your third letter.<br/>
+        1. Collect letters hidden in the maze to spell SEAN.<br/>
+        2. Avoid traps, which send you back to the start.<br/>
+        3. Collect hourglasses to gain extra time.<br/>
+        4. Look out for miscolored walls that you can sneak through.<br/>
+        5. Beware of Sean, who appears once you collect the third letter.<br/>
       </p>
-
       <button id="startGameBtn" class="start-btn">Start</button>
     </div>
   </div>
 
-  <!-- Main JS -->
+  <!-- Main JavaScript -->
   <script src="main.js"></script>
 </body>
 </html>
