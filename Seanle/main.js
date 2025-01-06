@@ -621,7 +621,7 @@ function showEndGamePopup(isWin) {
     endGameText.textContent = "You got Seaned! Try again tomorrow.";
   }
 }
- 
+  
 // ------------------------------------------------------
 // SHARING (with "Copied to clipboard!" feedback)
 // ------------------------------------------------------
