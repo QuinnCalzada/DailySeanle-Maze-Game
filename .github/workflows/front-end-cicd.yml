@@ -1,4 +1,4 @@
-name: Upload website to S3
+name: Deploy to S3 and Invalidate
 
 on:
   push:
@@ -9,35 +9,34 @@ jobs:
   deploy:
     runs-on: ubuntu-latest
     steps:
-      # Step 1: Check out your repo
+
+      # Step 1: Check out your code
       - uses: actions/checkout@v2
 
-      # Step 2: Sync files to S3 using jakejarvis/s3-sync-action
-      - uses: jakejarvis/s3-sync-action@master
+      # Step 2: Configure AWS Credentials (no need to manually install AWS CLI)
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v2
         with:
-          args: --delete --follow-symlinks
-        env:
-          AWS_S3_BUCKET: ${{ secrets.AWS_S3_BUCKET }}
-          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          AWS_REGION: 'us-east-2'
-          SOURCE_DIR: 'Seanle'
-      
-      # Step 3: Invoke your Lambda function
-      - name: Invoke Lambda (for CloudFront invalidation or any other task)
-        run: |
-          # Install AWS CLI if not already available (ubuntu-latest usually has it)
-          sudo apt-get update && sudo apt-get install -y awscli
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: us-east-2
 
-          # Invoke the Lambda function
+      # Step 3: Sync your local folder ("Seanle") to the S3 bucket
+      - name: Sync files to S3
+        run: |
+          aws s3 sync Seanle s3://${{ secrets.AWS_S3_BUCKET }} \
+            --delete \
+            --follow-symlinks
+
+      # Step 4: Invoke Lambda (for CloudFront invalidation or any other action)
+      - name: Invalidate CloudFront via Lambda
+        run: |
+          # This will call your Lambda function
           aws lambda invoke \
             --function-name DailySeanleCloudfrontInvalidation \
             --region us-east-2 \
             --payload '{}' \
             output.json
 
-          echo "Lambda function invoked. Check output.json for response."
-        env:
-          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          AWS_REGION: 'us-east-2' 
+          echo "Lambda function invoked. Response from Lambda:"
+          cat output.json
