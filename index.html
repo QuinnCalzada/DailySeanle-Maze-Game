@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8" />
+  <title>Daily Seanle</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <h1>Daily Seanle</h1>
+
+  <!-- Letters "S E A N" displayed at the top -->
+  <div class="letter-container" id="seanLetters">
+    <div class="letter-box" id="letterBoxS">S</div>
+    <div class="letter-box" id="letterBoxE">E</div>
+    <div class="letter-box" id="letterBoxA">A</div>
+    <div class="letter-box" id="letterBoxN">N</div>
+  </div>
+
+  <div id="infoPanel">
+    <div>Time: <span id="timeLabel">0</span> seconds</div>
+  </div>
+
+  <div id="gameContainer">
+    <canvas id="gameCanvas" width="640" height="640"></canvas>
+
+    <!-- Trap popup -->
+    <div id="popup" style="display:none;">You fell into a trap!</div>
+
+    <!-- Sean Summoned popup -->
+    <div id="seanSummonedPopup" class="popup" style="display:none;">
+      Sean is now in the maze!
+    </div>
+
+    <!-- End Game popup -->
+    <div id="endGamePopup" class="popup" style="display:none;">
+      <div id="endGameText"></div>
+      <button id="shareBtn">
+        <!-- Clipboard icon -->
+        <img src="assets/clipboard.png" alt="Clipboard"
+             style="width:16px; height:16px; margin-right:6px;" />
+        Share
+      </button>
+      <!-- The feedback line for "Copied to clipboard!" -->
+      <div id="shareFeedback" style="color: #c9b458; margin-top: 8px; display: none;">
+        <!-- Will show "Copied to clipboard!" -->
+      </div>
+    </div>
+
+    <!-- Rules popup shown at page load -->
+    <div id="rulesPopup" class="popup" style="display:none;">
+      <h2>How to Play Daily Seanle</h2>
+      <p>
+        Collect all letters S, E, A, N hidden in the maze.<br/>
+        Avoid traps, which send you back to the start.<br/>
+        Beware of Sean, an enemy that appears once you collect the third letter.<br/>
+        If Sean catches you, you lose!
+      </p>
+      <button id="startGameBtn" class="start-btn">Start</button>
+    </div>
+  </div>
+
+  <script src="main.js"></script>
+</body>
+</html>
