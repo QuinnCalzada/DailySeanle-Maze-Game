@@ -157,12 +157,14 @@ function setupSwipeControls() {
   let startX, startY;
 
   canvas.addEventListener("touchstart", (e) => {
+    e.preventDefault(); // Prevent default touch behavior
     const touch = e.touches[0];
     startX = touch.clientX;
     startY = touch.clientY;
   });
 
   canvas.addEventListener("touchend", (e) => {
+    e.preventDefault(); // Prevent default touch behavior
     const touch = e.changedTouches[0];
     const endX = touch.clientX;
     const endY = touch.clientY;
@@ -186,7 +188,13 @@ function setupSwipeControls() {
       }
     }
   });
+
+  // Prevent default browser scrolling on touchmove
+  canvas.addEventListener("touchmove", (e) => {
+    e.preventDefault();
+  });
 }
+
 
 // ------------------------------------------------------
 // PLAY ONCE PER DAY
