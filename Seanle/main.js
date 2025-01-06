@@ -38,7 +38,7 @@ const ENEMY_COLOR  = "red";
 
 // Enemy moves every 0.1 seconds
 const ENEMY_MOVE_INTERVAL = 100; // ms
-
+ 
 // Maze + Player + Enemy
 let canvas, ctx;
 let maze = [];
