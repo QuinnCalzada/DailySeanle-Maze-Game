@@ -1,4 +1,4 @@
-name: Deploy to S3 and Invalidate
+name: Deploy to S3 and Invalidate CloudFront
 
 on:
   push:
@@ -13,7 +13,7 @@ jobs:
       # Step 1: Check out your code
       - uses: actions/checkout@v2
 
-      # Step 2: Configure AWS Credentials (no need to manually install AWS CLI)
+      # Step 2: Configure AWS Credentials
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v2
         with:
@@ -28,10 +28,9 @@ jobs:
             --delete \
             --follow-symlinks
 
-      # Step 4: Invoke Lambda (for CloudFront invalidation or any other action)
+      # Step 4: Invoke Lambda (for CloudFront invalidation)
       - name: Invalidate CloudFront via Lambda
         run: |
-          # This will call your Lambda function
           aws lambda invoke \
             --function-name DailySeanleCloudfrontInvalidation \
             --region us-east-2 \
