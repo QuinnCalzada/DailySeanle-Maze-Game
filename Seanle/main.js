@@ -158,6 +158,9 @@ function setupInvisibleJoystick() {
   let holdInterval;
 
   document.body.addEventListener("touchstart", (e) => {
+    // Prevent joystick controls from interfering with button presses
+    if (e.target.tagName === "BUTTON") return;
+
     e.preventDefault(); // Prevent default touch behavior
     const touch = e.touches[0];
     startX = touch.clientX;
@@ -172,6 +175,8 @@ function setupInvisibleJoystick() {
   });
 
   document.body.addEventListener("touchmove", (e) => {
+    if (e.target.tagName === "BUTTON") return;
+
     e.preventDefault();
     const touch = e.touches[0];
     const dx = touch.clientX - startX;
@@ -195,6 +200,8 @@ function setupInvisibleJoystick() {
   });
 
   document.body.addEventListener("touchend", (e) => {
+    if (e.target.tagName === "BUTTON") return;
+
     e.preventDefault();
     isHolding = false;
     clearInterval(holdInterval);
