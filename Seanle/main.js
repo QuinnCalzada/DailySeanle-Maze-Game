@@ -152,78 +152,90 @@ window.onload = function () {
   });
 };
 
+// ------------------------------------------------------
+// mobile controls
+// ------------------------------------------------------
+
 function setupInvisibleJoystick() {
-  let startX, startY, activeDirection;
-  let isHolding = false;
-  let holdInterval;
+    let startX, startY, activeDirection;
+    let isHolding = false;
+    let holdInterval;
 
-  document.body.addEventListener("touchstart", (e) => {
-    // Prevent joystick controls from interfering with button presses
-    if (e.target.tagName === "BUTTON") return;
+    // Touch start event
+    document.body.addEventListener("touchstart", (e) => {
+        // Allow button interactions
+        if (e.target.tagName === "BUTTON" || e.target.classList.contains("no-swipe")) return;
 
-    e.preventDefault(); // Prevent default touch behavior
-    const touch = e.touches[0];
-    startX = touch.clientX;
-    startY = touch.clientY;
-    activeDirection = null;
-    isHolding = true;
-    holdInterval = setInterval(() => {
-      if (activeDirection && isHolding) {
-        moveInDirection(activeDirection);
-      }
-    }, 100); // Adjust interval as needed
-  });
+        e.preventDefault(); // Prevent scrolling or default touch behavior
+        const touch = e.touches[0];
+        startX = touch.clientX;
+        startY = touch.clientY;
+        activeDirection = null;
+        isHolding = true;
 
-  document.body.addEventListener("touchmove", (e) => {
-    if (e.target.tagName === "BUTTON") return;
+        holdInterval = setInterval(() => {
+            if (activeDirection && isHolding) {
+                moveInDirection(activeDirection);
+            }
+        }, 100); // Adjust interval as needed
+    }, { passive: false });
 
-    e.preventDefault();
-    const touch = e.touches[0];
-    const dx = touch.clientX - startX;
-    const dy = touch.clientY - startY;
+    // Touch move event
+    document.body.addEventListener("touchmove", (e) => {
+        // Allow button interactions
+        if (e.target.tagName === "BUTTON" || e.target.classList.contains("no-swipe")) return;
 
-    if (Math.abs(dx) > Math.abs(dy)) {
-      // Horizontal swipe
-      if (dx > 30) {
-        activeDirection = "right"; // Swipe right
-      } else if (dx < -30) {
-        activeDirection = "left"; // Swipe left
-      }
-    } else {
-      // Vertical swipe
-      if (dy > 30) {
-        activeDirection = "down"; // Swipe down
-      } else if (dy < -30) {
-        activeDirection = "up"; // Swipe up
-      }
+        e.preventDefault(); // Prevent scrolling or default touch behavior
+        const touch = e.touches[0];
+        const dx = touch.clientX - startX;
+        const dy = touch.clientY - startY;
+
+        if (Math.abs(dx) > Math.abs(dy)) {
+            // Horizontal swipe
+            if (dx > 30) {
+                activeDirection = "right"; // Swipe right
+            } else if (dx < -30) {
+                activeDirection = "left"; // Swipe left
+            }
+        } else {
+            // Vertical swipe
+            if (dy > 30) {
+                activeDirection = "down"; // Swipe down
+            } else if (dy < -30) {
+                activeDirection = "up"; // Swipe up
+            }
+        }
+    }, { passive: false });
+
+    // Touch end event
+    document.body.addEventListener("touchend", (e) => {
+        // Allow button interactions
+        if (e.target.tagName === "BUTTON" || e.target.classList.contains("no-swipe")) return;
+
+        e.preventDefault(); // Prevent scrolling or default touch behavior
+        isHolding = false;
+        clearInterval(holdInterval);
+    }, { passive: false });
+
+    // Function to move the player in the specified direction
+    function moveInDirection(direction) {
+        switch (direction) {
+            case "right":
+                tryMovePlayer(0, 1);
+                break;
+            case "left":
+                tryMovePlayer(0, -1);
+                break;
+            case "down":
+                tryMovePlayer(1, 0);
+                break;
+            case "up":
+                tryMovePlayer(-1, 0);
+                break;
+        }
     }
-  });
-
-  document.body.addEventListener("touchend", (e) => {
-    if (e.target.tagName === "BUTTON") return;
-
-    e.preventDefault();
-    isHolding = false;
-    clearInterval(holdInterval);
-  });
-
-  function moveInDirection(direction) {
-    switch (direction) {
-      case "right":
-        tryMovePlayer(0, 1);
-        break;
-      case "left":
-        tryMovePlayer(0, -1);
-        break;
-      case "down":
-        tryMovePlayer(1, 0);
-        break;
-      case "up":
-        tryMovePlayer(-1, 0);
-        break;
-    }
-  }
 }
+
 
 // ------------------------------------------------------
 // PLAY ONCE PER DAY
@@ -305,17 +317,21 @@ function handlePlayOncePerDay() {
 // INIT GAME
 // ------------------------------------------------------
 function initGame() {
-  canvas = document.getElementById("gameCanvas");
-  ctx = canvas.getContext("2d");
+    canvas = document.getElementById("gameCanvas");
+    ctx = canvas.getContext("2d");
 
-  // Adjust canvas size for mobile
-  if (window.innerWidth < 768) { // Mobile screen size
-    canvas.width = window.innerWidth - 20; // Leave some margin
-    canvas.height = window.innerWidth - 20; // Keep it square
-  } else {
-    canvas.width = 640;
-    canvas.height = 640;
-  }
+      // Dynamically adjust canvas size
+    if (window.innerWidth < 768) { // Mobile screen size
+        // On mobile, make the canvas fill most of the screen while leaving a margin
+        const size = Math.min(window.innerWidth - 20, window.innerHeight - 20);
+        canvas.width = size;
+        canvas.height = size;
+    } else {
+        // On PC, reduce the size slightly to avoid being too large
+        const size = Math.min(window.innerWidth * 0.6, 640); // 60% of window width or max 640px
+        canvas.width = size;
+        canvas.height = size;
+    }
 
   rngState = puzzleSeed; // set seed
 
@@ -542,42 +558,40 @@ function setupInput() {
 }
 
 function tryMovePlayer(dr, dc) {
-  let newR = player.row + dr;
-  let newC = player.col + dc;
-  if (!inBounds(newR, newC)) return;
-  if (!isPassableForPlayer(newR, newC)) return;
+    let newR = player.row + dr;
+    let newC = player.col + dc;
+    if (!inBounds(newR, newC)) return;
+    if (!isPassableForPlayer(newR, newC)) return;
 
-  player.row = newR;
-  player.col = newC;
+    player.row = newR;
+    player.col = newC;
 
-  let tile = maze[newR][newC];
-  switch (tile) {
-    case TIME_ITEM:
-      timeElapsed -= 5;
-      if (timeElapsed < 0) timeElapsed = 0;
-      maze[newR][newC] = FLOOR;
-      break;
-    case TRAP_FLOOR:
-      showTrapPopup();
-      player.row = startPos.row;
-      player.col = startPos.col;
-      maze[newR][newC] = FLOOR;
-      break;
-    case LETTER_S:
-    case LETTER_E:
-    case LETTER_A:
-    case LETTER_N:
-      collectLetter(tile);
-      maze[newR][newC] = FLOOR;
-      if (player.collectedLetters.length === 4) {
-        endGame(true);
-      }
-      break;
-    default:
-      // floor, crack, key, etc.
-      maze[newR][newC] = FLOOR;
-      break;
-  }
+    let tile = maze[newR][newC];
+    switch (tile) {
+        case TIME_ITEM:
+            timeElapsed -= 5;
+            if (timeElapsed < 0) timeElapsed = 0;
+            maze[newR][newC] = FLOOR;
+            break;
+        case TRAP_FLOOR:
+            showTrapPopup();
+            player.row = startPos.row;
+            player.col = startPos.col;
+            break;
+        case LETTER_S:
+        case LETTER_E:
+        case LETTER_A:
+        case LETTER_N:
+            collectLetter(tile);
+            maze[newR][newC] = FLOOR;
+            if (player.collectedLetters.length === 4) {
+                endGame(true);
+            }
+            break;
+        default:
+            // Do not change CRACK_WALL to FLOOR
+            break;
+    }
 }
 
 function isPassableForPlayer(r, c) {
