@@ -5,6 +5,7 @@
 // ------------------------------------------------------
 // CONFIG & CONSTANTS
 // ------------------------------------------------------
+// Maze properties
 const TILE_SIZE = 32;
 const ROWS = 20;
 const COLS = 20;
@@ -31,6 +32,9 @@ const TILE_COLORS = {
   [KEY_ITEM]:   "gold",
   [TIME_ITEM]:  "cyan"
 };
+
+// Mobile controls
+const JOYSTICK_THRESHOLD = 30;
 
 // Player & enemy
 const PLAYER_COLOR = "yellow";
@@ -89,58 +93,68 @@ function sRandRange(min, max) {
 }
 
 // ------------------------------------------------------
-// LETTER IMAGES for S/E/A/N
+// LOADING ASSETS
 // ------------------------------------------------------
-let letterImages = {
-  [LETTER_S]: null,
-  [LETTER_E]: null,
-  [LETTER_A]: null,
-  [LETTER_N]: null
+let assets = {
+    letterImages: {
+        [LETTER_S]: null,
+        [LETTER_E]: null,
+        [LETTER_A]: null,
+        [LETTER_N]: null
+    },
+    timeItem: null,
+    trap: null
 };
 
-function loadLetterImages(onComplete) {
-  const lettersToLoad = [
-    { type: LETTER_S, src: "assets/letter_s.png" },
-    { type: LETTER_E, src: "assets/letter_e.png" },
-    { type: LETTER_A, src: "assets/letter_a.png" },
-    { type: LETTER_N, src: "assets/letter_n.png" }
-  ];
-  let loadedCount = 0;
-  let total = lettersToLoad.length;
+function loadAssets(onComplete) {
+    const assetsToLoad = [
+        { key: `letterImages.${LETTER_S}`, src: "assets/letter_s.png" },
+        { key: `letterImages.${LETTER_E}`, src: "assets/letter_e.png" },
+        { key: `letterImages.${LETTER_A}`, src: "assets/letter_a.png" },
+        { key: `letterImages.${LETTER_N}`, src: "assets/letter_n.png" },
+        { key: "timeItem", src: "assets/time_item.png" },
+        { key: "trap", src: "assets/trap.png" }
+    ];
 
-  lettersToLoad.forEach(item => {
-    let img = new Image();
-    img.onload = () => {
-      loadedCount++;
-      if (loadedCount === total) {
-        onComplete();
-      }
-    };
-    img.src = item.src;
-    letterImages[item.type] = img;
-  });
+    let loadedCount = 0;
+    let total = assetsToLoad.length;
+
+    assetsToLoad.forEach(item => {
+        let img = new Image();
+        img.onload = () => {
+            loadedCount++;
+            if (loadedCount === total) {
+                onComplete();
+            }
+        };
+        img.src = item.src;
+
+        // Dynamically set the nested property
+        const keys = item.key.split(".");
+        let target = assets;
+        while (keys.length > 1) {
+            const key = keys.shift();
+            if (!(key in target)) target[key] = {};
+            target = target[key];
+        }
+        target[keys[0]] = img;
+    });
 }
 
 // ------------------------------------------------------
 // window.onload
 // ------------------------------------------------------
 window.onload = function () {
-  // 1) Load images first
-  loadLetterImages(() => {
-    // 2) Then init game
-    initGame();
-    setupInput(); // Existing keyboard-based input
-    setupInvisibleJoystick(); // Add invisible joystick controls
-
-    // 3) Handle once-per-day logic
-    handlePlayOncePerDay();
-
-    // 4) Enemy movement
-    setInterval(() => {
-      if (gameRunning && enemy.active) {
-        moveEnemyBFS();
-      }
-    }, ENEMY_MOVE_INTERVAL);
+    loadAssets(() => {
+        initGame();
+        setupInput();
+        setupInvisibleJoystick();
+        handlePlayOncePerDay();
+        setInterval(() => {
+          if (gameRunning && enemy.active) {
+            moveEnemyBFS();
+          }
+        }, ENEMY_MOVE_INTERVAL);
 
     // 5) Setup share button
     const shareBtn = document.getElementById("shareBtn");
@@ -149,93 +163,90 @@ window.onload = function () {
     // 6) Start button
     const startGameBtn = document.getElementById("startGameBtn");
     startGameBtn.addEventListener("click", startGame);
+
+    // Setup Reset Button
+    const resetGameBtn = document.getElementById("resetGameBtn");
+    resetGameBtn.addEventListener("click", resetGameFlag);
+
   });
 };
 
 // ------------------------------------------------------
-// mobile controls
+// Mobile Controls
 // ------------------------------------------------------
 
 function setupInvisibleJoystick() {
-    let startX, startY, activeDirection;
-    let isHolding = false;
-    let holdInterval;
+  let startX, startY, activeDirection;
+  let isHolding = false;
+  let holdInterval;
 
-    // Touch start event
-    document.body.addEventListener("touchstart", (e) => {
-        // Allow button interactions
-        if (e.target.tagName === "BUTTON" || e.target.classList.contains("no-swipe")) return;
+  document.body.addEventListener("touchstart", (e) => {
+    // Prevent joystick controls from interfering with button presses
+    if (e.target.tagName === "BUTTON") return;
 
-        e.preventDefault(); // Prevent scrolling or default touch behavior
-        const touch = e.touches[0];
-        startX = touch.clientX;
-        startY = touch.clientY;
-        activeDirection = null;
-        isHolding = true;
+    e.preventDefault(); // Prevent default touch behavior
+    const touch = e.touches[0];
+    startX = touch.clientX;
+    startY = touch.clientY;
+    activeDirection = null;
+    isHolding = true;
+    holdInterval = setInterval(() => {
+      if (activeDirection && isHolding) {
+        moveInDirection(activeDirection);
+      }
+    }, 100); // Adjust interval as needed
+  });
 
-        holdInterval = setInterval(() => {
-            if (activeDirection && isHolding) {
-                moveInDirection(activeDirection);
-            }
-        }, 100); // Adjust interval as needed
-    }, { passive: false });
+  document.body.addEventListener("touchmove", (e) => {
+    if (e.target.tagName === "BUTTON") return;
 
-    // Touch move event
-    document.body.addEventListener("touchmove", (e) => {
-        // Allow button interactions
-        if (e.target.tagName === "BUTTON" || e.target.classList.contains("no-swipe")) return;
+    e.preventDefault();
+    const touch = e.touches[0];
+    const dx = touch.clientX - startX;
+    const dy = touch.clientY - startY;
 
-        e.preventDefault(); // Prevent scrolling or default touch behavior
-        const touch = e.touches[0];
-        const dx = touch.clientX - startX;
-        const dy = touch.clientY - startY;
-
-        if (Math.abs(dx) > Math.abs(dy)) {
-            // Horizontal swipe
-            if (dx > 30) {
-                activeDirection = "right"; // Swipe right
-            } else if (dx < -30) {
-                activeDirection = "left"; // Swipe left
-            }
-        } else {
-            // Vertical swipe
-            if (dy > 30) {
-                activeDirection = "down"; // Swipe down
-            } else if (dy < -30) {
-                activeDirection = "up"; // Swipe up
-            }
-        }
-    }, { passive: false });
-
-    // Touch end event
-    document.body.addEventListener("touchend", (e) => {
-        // Allow button interactions
-        if (e.target.tagName === "BUTTON" || e.target.classList.contains("no-swipe")) return;
-
-        e.preventDefault(); // Prevent scrolling or default touch behavior
-        isHolding = false;
-        clearInterval(holdInterval);
-    }, { passive: false });
-
-    // Function to move the player in the specified direction
-    function moveInDirection(direction) {
-        switch (direction) {
-            case "right":
-                tryMovePlayer(0, 1);
-                break;
-            case "left":
-                tryMovePlayer(0, -1);
-                break;
-            case "down":
-                tryMovePlayer(1, 0);
-                break;
-            case "up":
-                tryMovePlayer(-1, 0);
-                break;
-        }
+    if (Math.abs(dx) > Math.abs(dy)) {
+      // Horizontal swipe
+      if (dx > JOYSTICK_THRESHOLD) {
+        activeDirection = "right"; // Swipe right
+      } else if (dx < -JOYSTICK_THRESHOLD) {
+        activeDirection = "left"; // Swipe left
+      }
+    } else {
+      // Vertical swipe
+      if (dy > JOYSTICK_THRESHOLD) {
+        activeDirection = "down"; // Swipe down
+      } else if (dy < -JOYSTICK_THRESHOLD) {
+        activeDirection = "up"; // Swipe up
+      }
     }
-}
+  });
 
+  document.body.addEventListener("touchend", (e) => {
+    if (e.target.tagName === "BUTTON") return;
+
+    e.preventDefault();
+    isHolding = false;
+    clearInterval(holdInterval);
+  });
+
+  function moveInDirection(direction) {
+    switch (direction) {
+      case "right":
+        tryMovePlayer(0, 1);
+        break;
+      case "left":
+        tryMovePlayer(0, -1);
+        break;
+      case "down":
+        tryMovePlayer(1, 0);
+        break;
+      case "up":
+        tryMovePlayer(-1, 0);
+        break;
+    }
+  }
+}
 
 // ------------------------------------------------------
 // PLAY ONCE PER DAY
@@ -257,6 +268,14 @@ function setPlayedFlag(isWin, gameTime) {
   localStorage.setItem('lastPlayedDate', getFormattedDate());
   localStorage.setItem('gameResult', isWin ? 'win' : 'lose');
   localStorage.setItem('gameTime', gameTime.toFixed(2));
+}
+
+// Reset "has played today" flag
+function resetGameFlag() {
+    localStorage.removeItem("lastPlayedDate");
+    localStorage.removeItem("gameResult");
+    localStorage.removeItem("gameTime");
+    location.reload(); // Reload the page to reset the game state
 }
 
 function handlePlayOncePerDay() {
@@ -316,41 +335,38 @@ function handlePlayOncePerDay() {
 // ------------------------------------------------------
 // INIT GAME
 // ------------------------------------------------------
+// Adjust canvas size dynamically
 function initGame() {
     canvas = document.getElementById("gameCanvas");
     ctx = canvas.getContext("2d");
 
-      // Dynamically adjust canvas size
+    // Adjust canvas size for mobile
     if (window.innerWidth < 768) { // Mobile screen size
-        // On mobile, make the canvas fill most of the screen while leaving a margin
-        const size = Math.min(window.innerWidth - 20, window.innerHeight - 20);
-        canvas.width = size;
-        canvas.height = size;
+      canvas.width = window.innerWidth - 20; // Leave some margin
+      canvas.height = window.innerWidth - 20; // Keep it square
     } else {
-        // On PC, reduce the size slightly to avoid being too large
-        const size = Math.min(window.innerWidth * 0.6, 640); // 60% of window width or max 640px
-        canvas.width = size;
-        canvas.height = size;
+      canvas.width = 640;
+      canvas.height = 640;
     }
 
-  rngState = puzzleSeed; // set seed
+    rngState = puzzleSeed; // set seed
 
-  generateMaze();
-  placeFeatures();
+    generateMaze();
+    placeFeatures();
 
-  player.row = startPos.row;
-  player.col = startPos.col;
-  player.collectedLetters = [];
-  timeElapsed = 0;
+    player.row = startPos.row;
+    player.col = startPos.col;
+    player.collectedLetters = [];
+    timeElapsed = 0;
 
-  enemy.active = false;
-  enemy.row    = -1;
-  enemy.col    = -1;
+    enemy.active = false;
+    enemy.row = -1;
+    enemy.col = -1;
 
-  hideElement("popup");
-  hideElement("seanSummonedPopup");
-  hideElement("endGamePopup");
-  hideElement("rulesPopup");
+    hideElement("popup");
+    hideElement("seanSummonedPopup");
+    hideElement("endGamePopup");
+    hideElement("rulesPopup");
 }
 
 // ------------------------------------------------------
@@ -437,18 +453,30 @@ function draw() {
 }
 
 function drawTile(r, c, tileType) {
-  if ([LETTER_S, LETTER_E, LETTER_A, LETTER_N].includes(tileType)) {
-    let img = letterImages[tileType];
-    if (img) {
-      ctx.drawImage(img, c*TILE_SIZE, r*TILE_SIZE, TILE_SIZE, TILE_SIZE);
-      return;
+    if ([LETTER_S, LETTER_E, LETTER_A, LETTER_N].includes(tileType)) {
+        let img = assets.letterImages[tileType];
+        if (img) {
+            ctx.drawImage(img, c * TILE_SIZE, r * TILE_SIZE, TILE_SIZE, TILE_SIZE);
+            return;
+        }
     }
-  }
-  // fallback
-  const color = TILE_COLORS[tileType] || "#000";
-  ctx.fillStyle = color;
-  ctx.fillRect(c*TILE_SIZE, r*TILE_SIZE, TILE_SIZE, TILE_SIZE);
+
+    if (tileType === TIME_ITEM && assets.timeItem) {
+        ctx.drawImage(assets.timeItem, c * TILE_SIZE, r * TILE_SIZE, TILE_SIZE, TILE_SIZE);
+        return;
+    }
+
+    if (tileType === TRAP_FLOOR && assets.trap) {
+        ctx.drawImage(assets.trap, c * TILE_SIZE, r * TILE_SIZE, TILE_SIZE, TILE_SIZE);
+        return;
+    }
+
+    // Fallback for tiles without images
+    const color = TILE_COLORS[tileType] || "#000";
+    ctx.fillStyle = color;
+    ctx.fillRect(c * TILE_SIZE, r * TILE_SIZE, TILE_SIZE, TILE_SIZE);
 }
+
 
 // ------------------------------------------------------
 // GENERATE + PLACE FEATURES
@@ -560,6 +588,7 @@ function setupInput() {
 function tryMovePlayer(dr, dc) {
     let newR = player.row + dr;
     let newC = player.col + dc;
+
     if (!inBounds(newR, newC)) return;
     if (!isPassableForPlayer(newR, newC)) return;
 
@@ -571,13 +600,17 @@ function tryMovePlayer(dr, dc) {
         case TIME_ITEM:
             timeElapsed -= 5;
             if (timeElapsed < 0) timeElapsed = 0;
-            maze[newR][newC] = FLOOR;
+            maze[newR][newC] = FLOOR; // Remove the time item
+            showTimePopup(); // Show the time reduction popup
             break;
+
         case TRAP_FLOOR:
-            showTrapPopup();
+            maze[newR][newC] = FLOOR; // Make trap disappear
+            showTrapPopup(); // Show the trap popup
             player.row = startPos.row;
             player.col = startPos.col;
             break;
+
         case LETTER_S:
         case LETTER_E:
         case LETTER_A:
@@ -589,10 +622,10 @@ function tryMovePlayer(dr, dc) {
             }
             break;
         default:
-            // Do not change CRACK_WALL to FLOOR
             break;
     }
 }
+
 
 function isPassableForPlayer(r, c) {
   if (!inBounds(r, c)) return false;
@@ -652,8 +685,15 @@ function spawnEnemy() {
   enemy.active = true;
   let placed = false;
   while (!placed) {
-    let r = sRandRange(1, ROWS-2);
-    let c = sRandRange(1, COLS-2);
+    // Spawn enemy at starting location
+    let r = 1;
+    let c = 1;
+
+    /* Spawn enemy at random location    
+      let r = sRandRange(1, ROWS-2);
+      let c = sRandRange(1, COLS-2);
+    */
+
     if (isPassableForEnemy(r, c)) {
       enemy.row = r;
       enemy.col = c;
@@ -744,12 +784,31 @@ function moveEnemyBFS() {
 // POPUPS & END GAME
 // ------------------------------------------------------
 function showTrapPopup() {
-  const popup = document.getElementById("popup");
-  if (popup) {
-    popup.style.display = "block";
-    popup.textContent = "You fell into a trap!";
-    trapPopupTimer = TRAP_MESSAGE_DURATION;
-  }
+    const popup = document.getElementById("trapPopup");
+    if (popup) {
+        popup.style.display = "block"; // Show the trap popup
+        popup.textContent = "You fell into a trap!"; // Update the message
+
+        setTimeout(() => {
+            popup.style.display = "none"; // Hide the popup after duration
+        }, TRAP_MESSAGE_DURATION);
+    } else {
+        console.error("Trap popup element not found!");
+    }
+}
+
+function showTimePopup() {
+    const popup = document.getElementById("timePopup");
+    if (popup) {
+        popup.style.display = "block"; // Show the time popup
+        popup.textContent = "-5 Seconds!"; // Update the message
+
+        setTimeout(() => {
+            popup.style.display = "none"; // Hide the popup after duration
+        }, TRAP_MESSAGE_DURATION);
+    } else {
+        console.error("Time popup element not found!");
+    }
 }
 
 function showSeanSummonedPopup() {
@@ -798,35 +857,41 @@ function showEndGamePopup(isWin) {
 // SHARING
 // ------------------------------------------------------
 function copyResultsToClipboard() {
-  const endGameText = document.getElementById("endGameText");
-  let shareMessage = "";
+    const endGameText = document.getElementById("endGameText");
+    const feedback = document.getElementById("shareFeedback");
+    let shareMessage = "";
 
-  if (endGameText && endGameText.textContent.includes("Congrats!")) {
-    shareMessage = `I completed Daily Seanle #${dayIndex} in ${timeElapsed.toFixed(2)} seconds! Can you do better: https://dailyseanle.com`;
-  } else if (endGameText && endGameText.textContent.includes("You got Seaned")) {
-    shareMessage = `I got Seaned on Daily Seanle #${dayIndex}! Can you do better: https://dailyseanle.com`;
-  } else {
-    console.error("Unable to determine game result for sharing.");
-    return;
-  }
+    if (endGameText && endGameText.textContent.includes("Congrats!")) {
+        shareMessage = `I completed Daily Seanle in ${timeElapsed.toFixed(2)} seconds! Can you do better: https://dailyseanle.com`;
+    } else if (endGameText && endGameText.textContent.includes("You got Seaned")) {
+        shareMessage = `I got Seaned! Can you do better: https://dailyseanle.com`;
+    } else {
+        console.error("Unable to determine game result for sharing.");
+        return;
+    }
 
-  navigator.clipboard.writeText(shareMessage)
-    .then(() => {
-      console.log("Results copied to clipboard!");
-      const feedback = document.getElementById("shareFeedback");
-      if (feedback) {
-        feedback.style.display = "block";
-        feedback.textContent = "Copied to clipboard!";
-        setTimeout(() => {
-          feedback.style.display = "none";
-        }, 3000);
-      }
-    })
-    .catch(err => {
-      console.error("Failed to copy: ", err);
-    });
+    navigator.clipboard.writeText(shareMessage)
+        .then(() => {
+            console.log("Results copied to clipboard!");
+            if (feedback) {
+                feedback.style.display = "block"; // Show the feedback
+                feedback.textContent = "Copied to clipboard!";
+                setTimeout(() => {
+                    feedback.style.display = "none"; // Hide feedback after 3 seconds
+                }, 3000);
+            }
+        })
+        .catch(err => {
+            console.error("Failed to copy: ", err);
+            if (feedback) {
+                feedback.style.display = "block";
+                feedback.textContent = "Failed to copy!";
+                setTimeout(() => {
+                    feedback.style.display = "none";
+                }, 3000);
+            }
+        });
 }
-
 // ------------------------------------------------------
 // HELPER
 // ------------------------------------------------------

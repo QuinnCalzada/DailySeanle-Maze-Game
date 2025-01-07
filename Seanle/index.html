@@ -22,6 +22,10 @@
   <!-- Info Panel -->
   <div id="infoPanel">
     <div>Time: <span id="timeLabel">0.00</span> seconds</div>
+
+     <!-- Add Reset Button -->
+<button id="resetGameBtn" class="reset-btn">Reset Game</button>
+
   </div>
 
   <!-- Game Container -->
@@ -29,8 +33,11 @@
     <!-- Maze Canvas -->
     <canvas id="gameCanvas" width="640" height="640"></canvas>
 
-    <!-- Minor Popup (e.g., Trap Notification) -->
-    <div id="popup">You fell into a trap!</div>
+    <!-- Trap Popup -->
+    <div id="trapPopup" style="display: none;">You fell into a trap!</div>
+
+    <!-- Time Notification Popup -->
+    <div id="timePopup" style="display: none;">-5 Seconds!</div>
 
     <!-- Sean Summoned Popup -->
     <div id="seanSummonedPopup" class="popup">
@@ -46,7 +53,9 @@
              style="width:16px; height:16px; margin-right:6px;" />
         Share
       </button>
-      <div id="shareFeedback">Copied to clipboard!</div>
+      <!-- Feedback for Clipboard Copy -->
+      <div id="shareFeedback" style="display: none;">Copied to clipboard!</div>
+
     </div>
 
     <!-- Rules Popup (Shown at Page Load) -->

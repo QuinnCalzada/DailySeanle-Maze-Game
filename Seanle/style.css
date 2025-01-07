@@ -55,25 +55,38 @@ h1 {
 }
 
 #gameCanvas {
-  background: #000;
-  display: block;
-  border: 3px solid #787c7e;
+    background: #000;
+    display: block;
+    margin: 0 auto; /* Center the canvas horizontally */
+    border: 3px solid #787c7e;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2); /* Optional shadow for a polished look */
 }
 
-/* Trap popup style */
-#popup {
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  background: rgba(200, 0, 0, 0.8);
-  color: #fff;
-  padding: 20px;
-  border-radius: 5px;
-  display: none; 
-  font-weight: bold;
-  z-index: 10;
+#trapPopup, #timePopup {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background: rgba(0, 0, 0, 0.8);
+    color: white;
+    padding: 20px;
+    border-radius: 8px;
+    font-size: 1.2em;
+    font-weight: bold;
+    z-index: 100;
+    display: none; /* Initially hidden */
+    text-align: center;
 }
+
+/* Optional unique styles for each popup */
+#trapPopup {
+    background: rgba(200, 0, 0, 0.9); /* Red for traps */
+}
+
+#timePopup {
+    background: rgba(0, 0, 255, 0.9); /* Blue for time items */
+}
+
 
 /* Similar style for #seanSummonedPopup, #endGamePopup, #rulesPopup */
 #seanSummonedPopup,
@@ -112,6 +125,11 @@ h1 {
   background: #5b9657;
 }
 
+#joystickArea {
+    background: rgba(0, 0, 0, 0); /* Transparent background */
+    touch-action: none; /* Disable default touch gestures */
+}
+
 /* Start button for the rules popup */
 .start-btn {
   margin-top: 10px;
@@ -126,4 +144,19 @@ h1 {
 
 .start-btn:hover {
   background: #589259;
+}
+
+.reset-btn {
+    margin-top: 10px;
+    cursor: pointer;
+    background: #ff6b6b;
+    color: #fff;
+    border: none;
+    padding: 8px 12px;
+    font-size: 1em;
+    border-radius: 4px;
+}
+
+.reset-btn:hover {
+    background: #e85c5c;
 }
