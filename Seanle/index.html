@@ -19,13 +19,14 @@
     <div class="letter-box" id="letterBoxN">N</div>
   </div>
   
-  <!-- Info Panel -->
+   <!-- Info Panel -->
   <div id="infoPanel">
     <div>Time: <span id="timeLabel">0.00</span> seconds</div>
 
-     <!-- Add Reset Button 
-   <button id="resetGameBtn" class="reset-btn">Reset Game</button>
--->
+    <!-- Reset and End Game Buttons -->
+    <button id="resetGameBtn" class="reset-btn">Reset Game</button>
+    <button id="endGameBtn" class="end-btn">End Game</button>
+    <button id="activateEnemyBtn" class="activate-enemy-btn">Activate Enemy</button>
   </div>
 
   <!-- Game Container -->
@@ -44,19 +45,27 @@
       Sean is now in the maze!
     </div>
 
-    <!-- End Game Popup -->
+    <!--  End Game Popup -->
     <div id="endGamePopup" class="popup">
       <div id="endGameText"></div>
-      <button id="shareBtn">
-        <!-- Clipboard Icon -->
-        <img src="assets/clipboard.png" alt="Clipboard"
-             style="width:16px; height:16px; margin-right:6px;" />
-        Share
-      </button>
-      <!-- Feedback for Clipboard Copy -->
-      <div id="shareFeedback" style="display: none;">Copied to clipboard!</div>
 
-    </div>
+      <!-- Score Submission Form -->
+      <div id="submitScoreForm" style="display: none;">
+        <h3>Submit Your Score</h3>
+        <input type="text" id="playerNameInput" placeholder="Enter your name" maxlength="15" />
+        <button id="submitScoreBtn">Submit Score</button>
+      </div>
+
+  <!-- Leaderboard Feedback -->
+  <div id="leaderboardFeedback" style="display: none;">Score submitted successfully!</div>
+  
+  <!-- Share Button -->
+  <button id="shareBtn">
+    <img src="assets/clipboard.png" alt="Clipboard" style="width:16px; height:16px; margin-right:6px;" />
+    Share
+  </button>
+</div>
+
 
     <!-- Rules Popup (Shown at Page Load) -->
     <div id="rulesPopup" class="popup">
@@ -70,6 +79,12 @@
       </p>
       <button id="startGameBtn" class="start-btn">Start</button>
     </div>
+
+    <div id="leaderboardContainer">
+      <h2 id="leaderboardTitle">Daily Seanle #<span id="dayIndex"></span> Leaderboard</h2>
+      <div id="leaderboardList"></div>
+    </div>
+
   </div>
 
   <!-- Main JavaScript -->

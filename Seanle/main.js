@@ -74,25 +74,6 @@ let seanSummonedTimer = 0;
 const SEAN_SUMMONED_DURATION = 500;
 
 // ------------------------------------------------------
-// DAILY LOGIC
-// ------------------------------------------------------
-const REFERENCE_DATE = new Date(2025, 0, 5); // Jan 5, 2025
-const now = new Date();
-let dayIndex = Math.floor((now - REFERENCE_DATE) / (1000 * 60 * 60 * 24)) + 1;
-
-// Our puzzle seed = dayIndex
-let puzzleSeed = dayIndex;
-let rngState = puzzleSeed;
-
-function seededRandom() {
-  rngState = (1103515245 * rngState + 12345) & 0x7fffffff;
-  return (rngState / 0x80000000);
-}
-function sRandRange(min, max) {
-  return Math.floor(seededRandom() * (max - min + 1)) + min;
-}
-
-// ------------------------------------------------------
 // LOADING ASSETS
 // ------------------------------------------------------
 let assets = {
@@ -142,110 +123,22 @@ function loadAssets(onComplete) {
 }
 
 // ------------------------------------------------------
-// window.onload
+// DAILY LOGIC
 // ------------------------------------------------------
-window.onload = function () {
-    loadAssets(() => {
-        initGame();
-        setupInput();
-        setupInvisibleJoystick();
-        handlePlayOncePerDay();
-        setInterval(() => {
-          if (gameRunning && enemy.active) {
-            moveEnemyBFS();
-          }
-        }, ENEMY_MOVE_INTERVAL);
+const REFERENCE_DATE = new Date(2025, 0, 1); // Jan 5, 2025
+const now = new Date();
+let dayIndex = Math.floor((now - REFERENCE_DATE) / (1000 * 60 * 60 * 24)) + 1;
 
-    // 5) Setup share button
-    const shareBtn = document.getElementById("shareBtn");
-    shareBtn.addEventListener("click", copyResultsToClipboard);
+// Our puzzle seed = dayIndex
+let puzzleSeed = dayIndex;
+let rngState = puzzleSeed;
 
-    // 6) Start button
-    const startGameBtn = document.getElementById("startGameBtn");
-    startGameBtn.addEventListener("click", startGame);
-
-    // Setup Reset Button
-    const resetGameBtn = document.getElementById("resetGameBtn");
-    resetGameBtn.addEventListener("click", resetGameFlag);
-
-  });
-};
-
-// ------------------------------------------------------
-// Mobile Controls
-// ------------------------------------------------------
-
-function setupInvisibleJoystick() {
-  let startX, startY, activeDirection;
-  let isHolding = false;
-  let holdInterval;
-
-  document.body.addEventListener("touchstart", (e) => {
-    // Prevent joystick controls from interfering with button presses
-    if (e.target.tagName === "BUTTON") return;
-
-    e.preventDefault(); // Prevent default touch behavior
-    const touch = e.touches[0];
-    startX = touch.clientX;
-    startY = touch.clientY;
-    activeDirection = null;
-    isHolding = true;
-    holdInterval = setInterval(() => {
-      if (activeDirection && isHolding) {
-        moveInDirection(activeDirection);
-      }
-    }, 100); // Adjust interval as needed
-  });
-
-  document.body.addEventListener("touchmove", (e) => {
-    if (e.target.tagName === "BUTTON") return;
-
-    e.preventDefault();
-    const touch = e.touches[0];
-    const dx = touch.clientX - startX;
-    const dy = touch.clientY - startY;
-
-    if (Math.abs(dx) > Math.abs(dy)) {
-      // Horizontal swipe
-      if (dx > JOYSTICK_THRESHOLD) {
-        activeDirection = "right"; // Swipe right
-      } else if (dx < -JOYSTICK_THRESHOLD) {
-        activeDirection = "left"; // Swipe left
-      }
-    } else {
-      // Vertical swipe
-      if (dy > JOYSTICK_THRESHOLD) {
-        activeDirection = "down"; // Swipe down
-      } else if (dy < -JOYSTICK_THRESHOLD) {
-        activeDirection = "up"; // Swipe up
-      }
-    }
-  });
-
-  document.body.addEventListener("touchend", (e) => {
-    if (e.target.tagName === "BUTTON") return;
-
-    e.preventDefault();
-    isHolding = false;
-    clearInterval(holdInterval);
-  });
-
-  function moveInDirection(direction) {
-    switch (direction) {
-      case "right":
-        tryMovePlayer(0, 1);
-        break;
-      case "left":
-        tryMovePlayer(0, -1);
-        break;
-      case "down":
-        tryMovePlayer(1, 0);
-        break;
-      case "up":
-        tryMovePlayer(-1, 0);
-        break;
-    }
-  }
+function seededRandom() {
+  rngState = (1103515245 * rngState + 12345) & 0x7fffffff;
+  return (rngState / 0x80000000);
+}
+function sRandRange(min, max) {
+  return Math.floor(seededRandom() * (max - min + 1)) + min;
 }
 
 // ------------------------------------------------------
@@ -333,6 +226,39 @@ function handlePlayOncePerDay() {
 }
 
 // ------------------------------------------------------
+// window.onload
+// ------------------------------------------------------
+window.onload = function () {
+    loadAssets(() => {
+        initGame();
+        setupInput();
+        setupInvisibleJoystick();
+        handlePlayOncePerDay();
+        setInterval(() => {
+          if (gameRunning && enemy.active) {
+            moveEnemyBFS();
+          }
+        }, ENEMY_MOVE_INTERVAL);
+
+    // Initialize Share Button
+    const shareBtn = document.getElementById("shareBtn");
+    if (shareBtn) {
+      shareBtn.addEventListener("click", copyResultsToClipboard);
+    }
+
+    // Start button
+    const startGameBtn = document.getElementById("startGameBtn");
+    startGameBtn.addEventListener("click", startGame);
+    
+    // Dev buttons
+    setupResetGameButton(); // Initialize the Reset Game button
+    setupEndGameButton(); // Initialize the End Game button
+    setupActivateEnemyButton(); // Initialize the Activate Enemy button
+
+  });
+};
+
+// ------------------------------------------------------
 // INIT GAME
 // ------------------------------------------------------
 // Adjust canvas size dynamically
@@ -410,73 +336,6 @@ function gameLoop(timestamp) {
   draw();
   requestAnimationFrame(gameLoop);
 }
-
-// ------------------------------------------------------
-// DRAW
-// ------------------------------------------------------
-function draw() {
-  ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-  for (let r = 0; r < ROWS; r++) {
-    for (let c = 0; c < COLS; c++) {
-      let dist = Math.abs(r - player.row) + Math.abs(c - player.col);
-      if (dist <= LIGHT_RADIUS) {
-        let tileType = maze[r][c];
-        drawTile(r, c, tileType);
-      } else {
-        // darkness
-        ctx.fillStyle = "#000";
-        ctx.fillRect(c*TILE_SIZE, r*TILE_SIZE, TILE_SIZE, TILE_SIZE);
-      }
-    }
-  }
-
-  // Draw player
-  ctx.fillStyle = PLAYER_COLOR;
-  ctx.fillRect(
-    player.col*TILE_SIZE + 8,
-    player.row*TILE_SIZE + 8,
-    TILE_SIZE - 16,
-    TILE_SIZE - 16
-  );
-
-  // Draw enemy
-  if (enemy.active) {
-    ctx.fillStyle = ENEMY_COLOR;
-    ctx.fillRect(
-      enemy.col*TILE_SIZE + 8,
-      enemy.row*TILE_SIZE + 8,
-      TILE_SIZE - 16,
-      TILE_SIZE - 16
-    );
-  }
-}
-
-function drawTile(r, c, tileType) {
-    if ([LETTER_S, LETTER_E, LETTER_A, LETTER_N].includes(tileType)) {
-        let img = assets.letterImages[tileType];
-        if (img) {
-            ctx.drawImage(img, c * TILE_SIZE, r * TILE_SIZE, TILE_SIZE, TILE_SIZE);
-            return;
-        }
-    }
-
-    if (tileType === TIME_ITEM && assets.timeItem) {
-        ctx.drawImage(assets.timeItem, c * TILE_SIZE, r * TILE_SIZE, TILE_SIZE, TILE_SIZE);
-        return;
-    }
-
-    if (tileType === TRAP_FLOOR && assets.trap) {
-        ctx.drawImage(assets.trap, c * TILE_SIZE, r * TILE_SIZE, TILE_SIZE, TILE_SIZE);
-        return;
-    }
-
-    // Fallback for tiles without images
-    const color = TILE_COLORS[tileType] || "#000";
-    ctx.fillStyle = color;
-    ctx.fillRect(c * TILE_SIZE, r * TILE_SIZE, TILE_SIZE, TILE_SIZE);
-}
-
 
 // ------------------------------------------------------
 // GENERATE + PLACE FEATURES
@@ -557,6 +416,74 @@ function placeFeatures() {
     }
   }
 }
+
+// ------------------------------------------------------
+// DRAW
+// ------------------------------------------------------
+function draw() {
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+  for (let r = 0; r < ROWS; r++) {
+    for (let c = 0; c < COLS; c++) {
+      let dist = Math.abs(r - player.row) + Math.abs(c - player.col);
+      if (dist <= LIGHT_RADIUS) {
+        let tileType = maze[r][c];
+        drawTile(r, c, tileType);
+      } else {
+        // darkness
+        ctx.fillStyle = "#000";
+        ctx.fillRect(c*TILE_SIZE, r*TILE_SIZE, TILE_SIZE, TILE_SIZE);
+      }
+    }
+  }
+
+  // Draw player
+  ctx.fillStyle = PLAYER_COLOR;
+  ctx.fillRect(
+    player.col*TILE_SIZE + 8,
+    player.row*TILE_SIZE + 8,
+    TILE_SIZE - 16,
+    TILE_SIZE - 16
+  );
+
+  // Draw enemy
+  if (enemy.active) {
+    ctx.fillStyle = ENEMY_COLOR;
+    ctx.fillRect(
+      enemy.col*TILE_SIZE + 8,
+      enemy.row*TILE_SIZE + 8,
+      TILE_SIZE - 16,
+      TILE_SIZE - 16
+    );
+  }
+}
+
+function drawTile(r, c, tileType) {
+    if ([LETTER_S, LETTER_E, LETTER_A, LETTER_N].includes(tileType)) {
+        let img = assets.letterImages[tileType];
+        if (img) {
+            ctx.drawImage(img, c * TILE_SIZE, r * TILE_SIZE, TILE_SIZE, TILE_SIZE);
+            return;
+        }
+    }
+
+    if (tileType === TIME_ITEM && assets.timeItem) {
+        ctx.drawImage(assets.timeItem, c * TILE_SIZE, r * TILE_SIZE, TILE_SIZE, TILE_SIZE);
+        return;
+    }
+
+    if (tileType === TRAP_FLOOR && assets.trap) {
+        ctx.drawImage(assets.trap, c * TILE_SIZE, r * TILE_SIZE, TILE_SIZE, TILE_SIZE);
+        return;
+    }
+
+    // Fallback for tiles without images
+    const color = TILE_COLORS[tileType] || "#000";
+    ctx.fillStyle = color;
+    ctx.fillRect(c * TILE_SIZE, r * TILE_SIZE, TILE_SIZE, TILE_SIZE);
+}
+
+
 
 // ------------------------------------------------------
 // MOVEMENT & COLLECTION
@@ -679,7 +606,84 @@ function updateLettersUI() {
 }
 
 // ------------------------------------------------------
-// ENEMY ("SEAN")
+// Mobile Controls
+// ------------------------------------------------------
+
+function setupInvisibleJoystick() {
+  let startX, startY, activeDirection;
+  let isHolding = false;
+  let holdInterval;
+
+  document.body.addEventListener("touchstart", (e) => {
+    // Prevent joystick controls from interfering with button presses
+    if (e.target.tagName === "BUTTON") return;
+
+    e.preventDefault(); // Prevent default touch behavior
+    const touch = e.touches[0];
+    startX = touch.clientX;
+    startY = touch.clientY;
+    activeDirection = null;
+    isHolding = true;
+    holdInterval = setInterval(() => {
+      if (activeDirection && isHolding) {
+        moveInDirection(activeDirection);
+      }
+    }, 100); // Adjust interval as needed
+  });
+
+  document.body.addEventListener("touchmove", (e) => {
+    if (e.target.tagName === "BUTTON") return;
+
+    e.preventDefault();
+    const touch = e.touches[0];
+    const dx = touch.clientX - startX;
+    const dy = touch.clientY - startY;
+
+    if (Math.abs(dx) > Math.abs(dy)) {
+      // Horizontal swipe
+      if (dx > JOYSTICK_THRESHOLD) {
+        activeDirection = "right"; // Swipe right
+      } else if (dx < -JOYSTICK_THRESHOLD) {
+        activeDirection = "left"; // Swipe left
+      }
+    } else {
+      // Vertical swipe
+      if (dy > JOYSTICK_THRESHOLD) {
+        activeDirection = "down"; // Swipe down
+      } else if (dy < -JOYSTICK_THRESHOLD) {
+        activeDirection = "up"; // Swipe up
+      }
+    }
+  });
+
+  document.body.addEventListener("touchend", (e) => {
+    if (e.target.tagName === "BUTTON") return;
+
+    e.preventDefault();
+    isHolding = false;
+    clearInterval(holdInterval);
+  });
+
+  function moveInDirection(direction) {
+    switch (direction) {
+      case "right":
+        tryMovePlayer(0, 1);
+        break;
+      case "left":
+        tryMovePlayer(0, -1);
+        break;
+      case "down":
+        tryMovePlayer(1, 0);
+        break;
+      case "up":
+        tryMovePlayer(-1, 0);
+        break;
+    }
+  }
+}
+
+// ------------------------------------------------------
+// SEAN
 // ------------------------------------------------------
 function spawnEnemy() {
   enemy.active = true;
@@ -841,16 +845,93 @@ function showEndGamePopup(isWin) {
   hideElement("popup");
   hideElement("seanSummonedPopup");
 
-  const endGameDiv  = document.getElementById("endGamePopup");
+  const endGameDiv = document.getElementById("endGamePopup");
   const endGameText = document.getElementById("endGameText");
+  const submitScoreForm = document.getElementById("submitScoreForm");
+  const leaderboardFeedback = document.getElementById("leaderboardFeedback");
+
   if (endGameDiv && endGameText) {
-    endGameDiv.style.display = "block";
+    endGameDiv.style.display = "block"; // Show the end game popup
+
     if (isWin) {
       endGameText.textContent = `Congrats! You collected S, E, A, N in ${timeElapsed.toFixed(2)} seconds.`;
+      if (submitScoreForm) {
+        submitScoreForm.style.display = "block"; // Show the form
+      }
     } else {
       endGameText.textContent = "You got Seaned! Try again tomorrow.";
+      if (submitScoreForm) {
+        submitScoreForm.style.display = "none"; // Hide the form
+      }
+    }
+
+    // Handle Score Submission
+    const submitBtn = document.getElementById("submitScoreBtn");
+    if (submitBtn) {
+      submitBtn.onclick = async () => {
+        const playerName = document.getElementById("playerNameInput").value.trim();
+
+        if (playerName) {
+          await submitScore(playerName, timeElapsed); // Submit the score
+          if (leaderboardFeedback) {
+            leaderboardFeedback.style.display = "block"; // Show feedback
+            setTimeout(() => leaderboardFeedback.style.display = "none", 3000); // Hide feedback
+          }
+          if (submitScoreForm) {
+            submitScoreForm.style.display = "none"; // Hide the form after submission
+          }
+          fetchLeaderboard(); // Refresh leaderboard
+        } else {
+          alert("Please enter a name!");
+        }
+      };
     }
   }
+}
+
+
+// ------------------------------------------------------
+// LEADERBOARD
+// ------------------------------------------------------
+
+const API_URL = "https://i6calligwc.execute-api.us-east-1.amazonaws.com";
+
+async function fetchLeaderboard() {
+    try {
+        const response = await fetch(`${API_URL}/leaderboard`);
+        const { leaderboard, userCount } = await response.json();
+        displayLeaderboard(leaderboard, userCount);
+    } catch (err) {
+        console.error("Error fetching leaderboard:", err);
+    }
+}
+
+async function submitScore(username, score) {
+    try {
+        const response = await fetch(`${API_URL}/submit-score`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ username, score })
+        });
+        if (!response.ok) throw new Error("Failed to submit score");
+    } catch (err) {
+        console.error("Error submitting score:", err);
+    }
+}
+
+function displayLeaderboard(leaderboard, userCount) {
+    const list = document.getElementById("leaderboardList");
+    list.innerHTML = ""; // Clear previous entries
+
+    leaderboard.forEach((entry) => {
+        const div = document.createElement("div");
+        div.innerHTML = `<span>${entry.username}</span><span>${entry.score.toFixed(2)}s</span>`;
+        list.appendChild(div);
+    });
+
+    const userCountLabel = document.createElement("p");
+    userCountLabel.textContent = `Total Players Today: ${userCount}`;
+    list.appendChild(userCountLabel);
 }
 
 // ------------------------------------------------------
@@ -858,42 +939,38 @@ function showEndGamePopup(isWin) {
 // ------------------------------------------------------
 function copyResultsToClipboard() {
     const endGameText = document.getElementById("endGameText");
-    const feedback = document.getElementById("shareFeedback");
+    const feedback = document.getElementById("leaderboardFeedback");
     let shareMessage = "";
 
-    if (endGameText && endGameText.textContent.includes("Congrats!")) {
-        shareMessage = `I completed Daily Seanle in ${timeElapsed.toFixed(2)} seconds! Can you do better: https://dailyseanle.com`;
-    } else if (endGameText && endGameText.textContent.includes("You got Seaned")) {
-        shareMessage = `I got Seaned! Can you do better: https://dailyseanle.com`;
-    } else {
-        console.error("Unable to determine game result for sharing.");
-        return;
+   if (endGameText) {
+    if (endGameText.textContent.includes("Congrats!")) {
+        shareMessage = `I completed Daily Seanle #${dayIndex} in ${timeElapsed.toFixed(2)} seconds! Can you do better: https://dailyseanle.com`;
+        localStorage.setItem("clipboardScore", shareMessage); // Store score locally
+    } else if (endGameText.textContent.includes("You got Seaned")) {
+        shareMessage = `I got Seaned on Daily Seanle #${dayIndex}! Can you do better: https://dailyseanle.com`;
+        localStorage.setItem("clipboardScore", shareMessage); // Store score locally
     }
-
-    navigator.clipboard.writeText(shareMessage)
-        .then(() => {
-            console.log("Results copied to clipboard!");
-            if (feedback) {
-                feedback.style.display = "block"; // Show the feedback
-                feedback.textContent = "Copied to clipboard!";
-                setTimeout(() => {
-                    feedback.style.display = "none"; // Hide feedback after 3 seconds
-                }, 3000);
-            }
-        })
-        .catch(err => {
-            console.error("Failed to copy: ", err);
-            if (feedback) {
-                feedback.style.display = "block";
-                feedback.textContent = "Failed to copy!";
-                setTimeout(() => {
-                    feedback.style.display = "none";
-                }, 3000);
-            }
-        });
 }
+
+
+   navigator.clipboard.writeText(shareMessage)
+        .then(() => {
+            feedback.style.display = "block";
+            feedback.textContent = "Copied to clipboard!";
+            setTimeout(() => (feedback.style.display = "none"), 3000);
+        })
+        .catch(console.error);
+}
+
+function loadScoreFromClipboard() {
+    const storedScore = localStorage.getItem("clipboardScore");
+    if (storedScore) {
+        navigator.clipboard.writeText(storedScore).catch(console.error);
+    }
+}
+
 // ------------------------------------------------------
-// HELPER
+// HELPERS
 // ------------------------------------------------------
 function hideElement(id) {
   const el = document.getElementById(id);
@@ -905,4 +982,29 @@ function showElement(id) {
 }
 function inBounds(r, c) {
   return (r >= 0 && r < ROWS && c >= 0 && c < COLS);
+}
+
+// Handle "Activate Enemy" Button
+function setupActivateEnemyButton() {
+  const activateEnemyBtn = document.getElementById("activateEnemyBtn");
+  activateEnemyBtn.addEventListener("click", () => {
+      spawnEnemy(); // Activate the enemy
+  });
+}
+
+// Handle "End Game" Button
+function setupEndGameButton() {
+  const endGameBtn = document.getElementById("endGameBtn");
+  endGameBtn.addEventListener("click", () => {
+    // Simulate a game completion with a win
+    endGame(true); // Pass `false` for testing the lose scenario
+  });
+}
+
+// Handle "Reset Game" Button
+function setupResetGameButton() {
+  const resetGameBtn = document.getElementById("resetGameBtn");
+  resetGameBtn.addEventListener("click", () => {
+    resetGameFlag();
+  });
 }

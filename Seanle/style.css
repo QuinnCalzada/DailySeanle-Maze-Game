@@ -160,3 +160,102 @@ h1 {
 .reset-btn:hover {
     background: #e85c5c;
 }
+
+/* Leaderboard Container */
+#leaderboardContainer {
+  position: fixed;
+  right: 20px;
+  top: 80px;
+  width: 250px;
+  background: #f8f9fa;
+  border: 1px solid #6aaa64;
+  border-radius: 8px;
+  padding: 10px;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+  overflow: hidden;
+}
+
+#leaderboardTitle {
+  font-size: 1.2em;
+  color: #3a3a3c;
+  margin-bottom: 10px;
+}
+
+#leaderboardList {
+  max-height: 300px;
+  overflow-y: auto;
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+#leaderboardList div {
+  display: flex;
+  justify-content: space-between;
+  padding: 4px 8px;
+  border-bottom: 1px solid #ddd;
+}
+
+#leaderboardList div:last-child {
+  border-bottom: none;
+}
+
+/* Score Submission */
+#submitScoreContainer {
+  margin-top: 20px;
+  text-align: center;
+}
+
+#playerNameInput {
+  width: 70%;
+  padding: 8px;
+  margin-bottom: 10px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+}
+
+#submitScoreBtn {
+  padding: 8px 12px;
+  background-color: #6aaa64;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+#submitScoreBtn:hover {
+  background-color: #589259;
+}
+
+/* End Game Button */
+.end-btn {
+  margin-top: 10px;
+  cursor: pointer;
+  background-color: #ffc107;
+  color: #000;
+  border: none;
+  padding: 8px 12px;
+  font-size: 1em;
+  border-radius: 4px;
+}
+
+.end-btn:hover {
+  background-color: #e6a700;
+}
+
+/* Activate Enemy Button */
+.activate-enemy-btn {
+  margin-top: 10px;
+  cursor: pointer;
+  background-color: #dc3545;
+  color: white;
+  border: none;
+  padding: 8px 12px;
+  font-size: 1em;
+  border-radius: 4px;
+}
+
+.activate-enemy-btn:hover {
+  background-color: #c82333;
+}
+
