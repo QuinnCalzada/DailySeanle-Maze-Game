@@ -125,7 +125,7 @@ function loadAssets(onComplete) {
 // ------------------------------------------------------
 // DAILY LOGIC
 // ------------------------------------------------------
-const REFERENCE_DATE = new Date(2025, 0, 1); // Jan 5, 2025
+const REFERENCE_DATE = new Date(2025, 5, 1); // Jan 5, 2025
 const now = new Date();
 let dayIndex = Math.floor((now - REFERENCE_DATE) / (1000 * 60 * 60 * 24)) + 1;
 
@@ -868,24 +868,19 @@ function showEndGamePopup(isWin) {
     // Handle Score Submission
     const submitBtn = document.getElementById("submitScoreBtn");
     if (submitBtn) {
-      submitBtn.onclick = async () => {
+    submitBtn.onclick = async () => {
+        console.log("Submit button clicked");
         const playerName = document.getElementById("playerNameInput").value.trim();
+        console.log("Player Name:", playerName, "Time Elapsed:", timeElapsed);
 
         if (playerName) {
-          await submitScore(playerName, timeElapsed); // Submit the score
-          if (leaderboardFeedback) {
-            leaderboardFeedback.style.display = "block"; // Show feedback
-            setTimeout(() => leaderboardFeedback.style.display = "none", 3000); // Hide feedback
-          }
-          if (submitScoreForm) {
-            submitScoreForm.style.display = "none"; // Hide the form after submission
-          }
-          fetchLeaderboard(); // Refresh leaderboard
+            await submitScore(playerName, timeElapsed);
+            fetchLeaderboard();
         } else {
-          alert("Please enter a name!");
+            alert("Please enter your name!");
         }
-      };
-    }
+    };
+}
   }
 }
 
@@ -898,8 +893,10 @@ const API_URL = "https://i6calligwc.execute-api.us-east-1.amazonaws.com";
 
 async function fetchLeaderboard() {
     try {
+        console.log("Fetching leaderboard...");
         const response = await fetch(`${API_URL}/leaderboard`);
         const { leaderboard, userCount } = await response.json();
+        console.log("Leaderboard Data:", leaderboard, "User Count:", userCount);
         displayLeaderboard(leaderboard, userCount);
     } catch (err) {
         console.error("Error fetching leaderboard:", err);
@@ -908,16 +905,25 @@ async function fetchLeaderboard() {
 
 async function submitScore(username, score) {
     try {
+        console.log("Submitting score:", { username, score });
         const response = await fetch(`${API_URL}/submit-score`, {
             method: "POST",
-            headers: { "Content-Type": "application/json" },
+            headers: {
+                "Content-Type": "application/json"
+            },
             body: JSON.stringify({ username, score })
         });
-        if (!response.ok) throw new Error("Failed to submit score");
+
+        if (!response.ok) {
+            throw new Error(`Failed to submit score: ${response.statusText}`);
+        }
+
+        console.log("Score submitted successfully!");
     } catch (err) {
         console.error("Error submitting score:", err);
     }
 }
+
 
 function displayLeaderboard(leaderboard, userCount) {
     const list = document.getElementById("leaderboardList");
