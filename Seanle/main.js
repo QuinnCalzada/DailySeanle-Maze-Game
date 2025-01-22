@@ -125,7 +125,7 @@ function loadAssets(onComplete) {
 // ------------------------------------------------------
 // DAILY LOGIC
 // ------------------------------------------------------
-const REFERENCE_DATE = new Date(2025, 5, 1); // Jan 5, 2025
+const REFERENCE_DATE = new Date(2025, 0, 5); // Jan 5, 2025
 const now = new Date();
 let dayIndex = Math.floor((now - REFERENCE_DATE) / (1000 * 60 * 60 * 24)) + 1;
 
